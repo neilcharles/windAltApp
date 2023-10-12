@@ -52,8 +52,10 @@ draw_wind_alt <- function(weather, location){
 
     ggplot2::theme(axis.line=ggplot2::element_blank(),
                    axis.ticks=ggplot2::element_blank(),
-                   # axis.text.x=ggplot2::element_blank(),
-                   # axis.title.x=ggplot2::element_blank(),
+                   axis.text.x=ggplot2::element_text(size = 12),
+                   axis.title.x=ggplot2::element_text(size = 12),
+                   plot.caption=ggplot2::element_text(size = 8),
+                   plot.title=ggplot2::element_text(size = 12),
                    axis.text.y=ggplot2::element_blank(),
                    axis.title.y=ggplot2::element_blank(),
                    legend.position="none",
