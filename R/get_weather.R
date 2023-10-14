@@ -1,3 +1,7 @@
+check_wind_alt_cache <- function(takeoff_name){
+
+}
+
 get_wind_alt <- function(lat = NULL, lon = NULL){
 
   get_data <- function(lat, lon, fact){

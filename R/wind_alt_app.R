@@ -3,23 +3,37 @@ library(bslib)
 library(thematic)
 library(ragg)
 
-sites_alt <- readr::read_csv('inst/data/sites_alt.csv') |>
+sites_alt <-
+  readr::read_csv('https://raw.githubusercontent.com/neilcharles/uk_pg_sites/main/sites.csv') |>
   dplyr::filter(is.na(exclude))
+
+cache_location <- "inst/data/cache"
 
 thematic_shiny(font = "auto")
 
 wind_alt_app <- function(...) {
   ui <- function(request) {
-
     page_fluid(
+      tags$head(tags$style(
+        HTML('p {font-family: "Nunito Sans"};')
+      )),
 
-      tags$head(tags$style(HTML('p {font-family: "Nunito Sans"};'))),
-
-      theme = bs_theme(version = 5, fg = "rgb(99, 99, 105)", primary = "#0568A6",
-                       secondary = "#D7D7D9", success = "#52BD6F", info = "#83CDFB",
-                       warning = "#F2B705", danger = "#D92344", base_font = font_google("Nunito Sans"),
-                       heading_font = font_google("Nunito Sans"), font_scale = 0.8,
-                       `enable-rounded` = FALSE, preset = "litera", bg = "#fff"),
+      theme = bs_theme(
+        version = 5,
+        fg = "rgb(99, 99, 105)",
+        primary = "#0568A6",
+        secondary = "#D7D7D9",
+        success = "#52BD6F",
+        info = "#83CDFB",
+        warning = "#F2B705",
+        danger = "#D92344",
+        base_font = font_google("Nunito Sans"),
+        heading_font = font_google("Nunito Sans"),
+        font_scale = 0.8,
+        `enable-rounded` = FALSE,
+        preset = "litera",
+        bg = "#fff"
+      ),
 
       # Allow dropdown to overflow card
 
@@ -27,29 +41,30 @@ wind_alt_app <- function(...) {
 
       titlePanel(title = ""),
 
-        layout_columns(
-          col_widths = c(8,4),
-          uiOutput("wind_chart_box"),
+      layout_columns(
+        col_widths = c(8, 4),
+        uiOutput("wind_chart_box"),
 
-          card(
-            card_header(
-              "Select Site"
-            ),
-            fill = FALSE,
-            layout_columns(
-              col_widths = c(6,6),
-              uiOutput('site_picker'),
-              actionButton('uiGetWeather', 'Get Site Forecast')),
-                     p("This app is new and currently in testing. Please do not use it as your only source of information."),
-                     a("Email Me.", href="mailto:neil.d.charles@gmail.com"),
-            hr(),
-            leaflet::leafletOutput('mini_map', width = "100%")
-            ))
-            )
+        card(
+          card_header("Select Site"),
+          fill = FALSE,
+          layout_columns(
+            col_widths = c(6, 6),
+            uiOutput('site_picker'),
+            actionButton('uiGetWeather', 'Get Site Forecast')
+          ),
+          p(
+            "This app is new and currently in testing. Please do not use it as your only source of information."
+          ),
+          a("Email Me.", href = "mailto:neil.d.charles@gmail.com"),
+          hr(),
+          leaflet::leafletOutput('mini_map', width = "100%")
+        )
+      )
+    )
   }
 
   server <- function(input, output, session) {
-
     output$date_picker <- renderUI({
       dateInput(
         'uiDatePicker',
@@ -65,7 +80,7 @@ wind_alt_app <- function(...) {
         NULL,
         unique(sites_alt$takeoff_name),
         multiple = FALSE,
-        options = list(container = "body", `live-search`=TRUE)
+        options = list(container = "body", `live-search` = TRUE)
       )
     })
 
@@ -88,6 +103,23 @@ wind_alt_app <- function(...) {
 
     weather <- eventReactive(input$uiGetWeather, {
       withProgress(message = 'Getting Data...', value = 0.5, {
+
+        #Check if recent cached forecast exists
+        cache_age <-
+          file.info(glue::glue(
+            "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
+          ))$mtime
+
+        if (!is.na(cache_age)) {
+          if (cache_age > lubridate::now() - lubridate::hours(1)) {
+            return(readr::read_rds(
+              glue::glue(
+                "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
+              )
+            ))
+          }
+        }
+
         get_wind_alt(location()$takeoff_lat, location()$takeoff_lon) |>
           dplyr::select(-name) |>
           tidyr::separate(fact, c('variable', 'pressure_alt'), sep = "_") |>
@@ -108,7 +140,8 @@ wind_alt_app <- function(...) {
             date = lubridate::date(time),
             hour = as.integer(stringr::str_extract(time, "(?<=\\T)([0-9][0-9])")),
             takeoff_name = location()$takeoff_name
-          )
+          ) |>
+          readr::write_rds(glue::glue("{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"))
       })
 
     })
@@ -156,8 +189,8 @@ wind_alt_app <- function(...) {
       req(input$uiSitePicker)
 
       location() |>
-        leaflet::leaflet(options = leaflet::leafletOptions(
-          attributionControl=FALSE)) |>
+        leaflet::leaflet(options = leaflet::leafletOptions(attributionControl =
+                                                             FALSE)) |>
         leaflet::addProviderTiles(leaflet::providers$Esri.WorldTopoMap) |>
         leaflet::addMarkers(lng = ~ takeoff_lon, lat = ~ takeoff_lat)
 
@@ -189,11 +222,9 @@ wind_alt_app <- function(...) {
     )
 
     onRestored(function(state) {
-      updateSelectInput(
-        session,
-        "uiSitePicker",
-        selected = state$input$uiSitePicker
-      )
+      updateSelectInput(session,
+                        "uiSitePicker",
+                        selected = state$input$uiSitePicker)
     })
     #---------------------------------------------------------------------------
 
