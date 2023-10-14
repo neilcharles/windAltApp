@@ -1,4 +1,4 @@
-draw_wind_alt <- function(weather, location){
+draw_wind_alt <- function(weather, location, wind_speed_red = 25){
 
   interp_wind <- tibble::as_tibble(approx(weather$alt_feet, weather$windspeed, n=100))
 
@@ -30,7 +30,7 @@ draw_wind_alt <- function(weather, location){
       high = 'red',
       midpoint = 8,
       na.value = 'red',
-      limits = c(0,23)
+      limits = c(0, wind_speed_red)
     ) +
     ggplot2::scale_linewidth(
       range = c(1,15),
