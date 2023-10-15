@@ -2,6 +2,7 @@ library(shiny)
 library(bslib)
 library(thematic)
 library(ragg)
+library(bsicons)
 
 sites_alt <-
   readr::read_csv('https://raw.githubusercontent.com/neilcharles/uk_pg_sites/main/sites.csv') |>
@@ -17,6 +18,8 @@ wind_alt_app <- function(...) {
       tags$head(tags$style(
         HTML('p {font-family: "Nunito Sans"};')
       )),
+
+      # shinyjs::useShinyjs(),
 
       theme = bs_theme(
         version = 5,
@@ -43,10 +46,36 @@ wind_alt_app <- function(...) {
 
       layout_columns(
         col_widths = c(8, 4),
-        uiOutput("wind_chart_box"),
-
         card(
-          card_header("Select Site"),
+          id = "forecast_wind_alt",
+          card(
+            card_header("Select Date and Time"),
+            uiOutput('date_picker'),
+            uiOutput('time_picker')
+          ),
+          card(
+            card_header("Wind Forecast"),
+            full_screen = TRUE,
+            plotOutput('wind_chart', width = "100%", height = 550)
+          )
+        ),
+        card(
+          card_header(
+            "Select Site",
+            popover(
+              bs_icon("gear"),
+              radioButtons(
+                "uiAltitudeUnits",
+                "Altitudes",
+                c("feet", "metres"),
+                "feet"
+              ),
+              radioButtons("uiSpeedUnits", "Speeds", c("kph", "mph"), "kph"),
+              title = "Settings"
+            )
+            ,
+            class = "d-flex justify-content-between"
+          ),
           fill = FALSE,
           layout_columns(
             col_widths = c(6, 6),
@@ -65,12 +94,15 @@ wind_alt_app <- function(...) {
   }
 
   server <- function(input, output, session) {
+    # shinyjs::hide("forecast_wind_alt")
+
     output$date_picker <- renderUI({
       dateInput(
         'uiDatePicker',
         'Date',
-        min = min(weather()$date),
-        max = max(weather()$date)
+        min = lubridate::today(),
+        max = lubridate::today() + lubridate::days(6),
+        format = "yyyy-mm-dd DD"
       )
     })
 
@@ -88,8 +120,8 @@ wind_alt_app <- function(...) {
       sliderInput(
         'uiTimePicker',
         'Time',
-        min = min(weather()$hour),
-        max = max(weather()$hour),
+        min = 0,
+        max = 23,
         value = 12,
         step = 1
       )
@@ -98,62 +130,72 @@ wind_alt_app <- function(...) {
     location <- reactive({
       sites_alt |>
         dplyr::filter(takeoff_name == input$uiSitePicker) |>
-        dplyr::mutate(elevation = elevation * 3.28)
+        dplyr::mutate(elevation = units_to_selected(elevation, "metres", input$uiAltitudeUnits))
     })
 
+    # shinyjs::show("forecast_wind_alt")
+
+
     weather <- eventReactive(input$uiGetWeather, {
-      withProgress(message = 'Getting Data...', value = 0.5, {
+      # Check if recent cached forecast exists
+      cache_age <-
+        file.info(glue::glue(
+          "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
+        ))$mtime
 
-        #Check if recent cached forecast exists
-        cache_age <-
-          file.info(glue::glue(
-            "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
-          ))$mtime
-
-        if (!is.na(cache_age)) {
-          if (cache_age > lubridate::now() - lubridate::hours(1)) {
-            return(readr::read_rds(
-              glue::glue(
-                "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
-              )
-            ))
-          }
+      if (!is.na(cache_age)) {
+        if (cache_age > lubridate::now() - lubridate::hours(1)) {
+          return(readr::read_rds(
+            glue::glue(
+              "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
+            )
+          ))
         }
+      }
 
-        get_wind_alt(location()$takeoff_lat, location()$takeoff_lon) |>
-          dplyr::select(-name) |>
-          tidyr::separate(fact, c('variable', 'pressure_alt'), sep = "_") |>
-          tidyr::pivot_wider(names_from = variable, values_from = value) |>
-          dplyr::mutate(
-            alt = dplyr::case_when(
-              pressure_alt == "1000hPa" ~ 110,
-              pressure_alt == "975hPa" ~ 320,
-              pressure_alt == "950hPa" ~ 500,
-              pressure_alt == "925hPa" ~ 800,
-              pressure_alt == "900hPa" ~ 1000,
-              pressure_alt == "850hPa" ~ 1500
-            ),
-            windspeed = round(windspeed, 0)
-          ) |>
-          dplyr::mutate(alt_feet = 3.28 * alt) |>
+      # Get weather
+      withProgress(message = 'Getting Data...', value = 0.5, {
+        lat <- location()$takeoff_lat
+        lon <- location()$takeoff_lon
+
+        # Wind
+        wind <- get_weather_at_altitude(lat, lon, "windspeed") |>
+          dplyr::union_all(get_weather_at_altitude(lat, lon, "winddirection")) |>
+          dplyr::select(-metric) |>
+          tidyr::pivot_wider(names_from = fact, values_from = value) |>
           dplyr::mutate(
             date = lubridate::date(time),
             hour = as.integer(stringr::str_extract(time, "(?<=\\T)([0-9][0-9])")),
             takeoff_name = location()$takeoff_name
-          ) |>
-          readr::write_rds(glue::glue("{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"))
-      })
+          )
 
+        weather <- list(wind = wind)
+
+        weather |>
+          readr::write_rds(glue::glue(
+            "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
+          ))
+
+        weather
+      })
     })
 
+
     output$wind_chart <- renderPlot({
+      req(weather())
+
       validate(need(
-        unique(weather()$takeoff_name) == unique(location()$takeoff_name),
+        unique(weather()$wind$takeoff_name) == unique(location()$takeoff_name),
         "Click 'Get Site Forecast' to refresh."
       ))
 
-      req(input$uiTimePicker)
+      weather_wind <- weather()$wind |>
+        dplyr::mutate(
+          windspeed = units_to_selected(windspeed, "kph", input$uiSpeedUnits),
+          altitude = units_to_selected(alt_m, "metres", input$uiAltitudeUnits)
+        )
 
+      #Convert time picker hour to the format used by open meteo
       hour <- ifelse(
         nchar(as.character(input$uiTimePicker)) == 1,
         glue::glue("0{as.character(input$uiTimePicker)}"),
@@ -162,27 +204,13 @@ wind_alt_app <- function(...) {
 
       date_time <- glue::glue("{input$uiDatePicker}T{hour}:00")
 
-      weather() |>
+      weather_wind |>
         dplyr::filter(time == date_time) |>
-        draw_wind_alt(location = location())
-    })
-
-    output$wind_chart_box <- renderUI({
-      req(weather())
-
-      tagList(
-        card(
-          card_header("Select Date and Time"),
-          uiOutput('date_picker'),
-          uiOutput('time_picker')
-        ),
-
-        card(
-          card_header("Wind Forecast"),
-          full_screen = TRUE,
-          plotOutput('wind_chart', width = "100%", height = 550)
+        draw_wind_alt(
+          location = location(),
+          altitude_units = input$uiAltitudeUnits,
+          speed_units = input$uiSpeedUnits
         )
-      )
     })
 
     output$mini_map <- leaflet::renderLeaflet({
@@ -227,7 +255,6 @@ wind_alt_app <- function(...) {
                         selected = state$input$uiSitePicker)
     })
     #---------------------------------------------------------------------------
-
 
   }
 

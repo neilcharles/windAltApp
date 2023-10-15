@@ -1,28 +1,34 @@
-draw_wind_alt <- function(weather, location, wind_speed_red = 25){
+draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_units, speed_units){
 
-  interp_wind <- tibble::as_tibble(approx(weather$alt_feet, weather$windspeed, n=100))
+  wind_speed_red <- units_to_selected(wind_speed_red_kph, "kph", speed_units)
+
+  interp_wind <- tibble::as_tibble(approx(weather$altitude, weather$windspeed, n=100))
+
+  altitude_lines <- units_to_selected(c(110, 320, 500, 800, 1000, 1500), "metres", altitude_units)
+
+  altitude_lines = round(altitude_lines / 10) * 10
 
   chart <- weather |>
-    ggplot2::ggplot(ggplot2::aes(x = windspeed, y = alt_feet)) +
+    ggplot2::ggplot(ggplot2::aes(x = windspeed, y = altitude)) +
 
     #Alt Lines
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = 360, yend = 360), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = 0, y = 360, label = "360'"), hjust=0, vjust=0, size = 5, colour = "grey") +
+    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = altitude_lines[1], yend = altitude_lines[1]), colour = "grey", linetype = "dashed", size = 0.1) +
+    ggplot2::geom_text(ggplot2::aes(x = 0, y = altitude_lines[1], label = altitude_lines[1]), hjust=0, vjust=0, size = 5, colour = "grey") +
 
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = 1050, yend = 1050), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = 0, y = 1050, label = "1050'"), hjust=0, vjust=0, size = 5, colour = "grey") +
+    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = altitude_lines[2], yend = altitude_lines[2]), colour = "grey", linetype = "dashed", size = 0.1) +
+    ggplot2::geom_text(ggplot2::aes(x = 0, y = altitude_lines[2], label = altitude_lines[2]), hjust=0, vjust=0, size = 5, colour = "grey") +
 
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = 1640, yend = 1640), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = 0, y = 1640, label = "1640'"), hjust=0, vjust=0, size = 5, colour = "grey") +
+    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = altitude_lines[3], yend = altitude_lines[3]), colour = "grey", linetype = "dashed", size = 0.1) +
+    ggplot2::geom_text(ggplot2::aes(x = 0, y = altitude_lines[3], label = altitude_lines[3]), hjust=0, vjust=0, size = 5, colour = "grey") +
 
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = 2620, yend = 2620), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = 0, y = 2620, label = "2620'"), hjust=0, vjust=0, size = 5, colour = "grey") +
+    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = altitude_lines[4], yend = altitude_lines[4]), colour = "grey", linetype = "dashed", size = 0.1) +
+    ggplot2::geom_text(ggplot2::aes(x = 0, y = altitude_lines[4], label = altitude_lines[4]), hjust=0, vjust=0, size = 5, colour = "grey") +
 
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = 3280, yend = 3280), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = 0, y = 3280, label = "3280'"), hjust=0, vjust=0, size = 5, colour = "grey") +
+    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = altitude_lines[5], yend = altitude_lines[5]), colour = "grey", linetype = "dashed", size = 0.1) +
+    ggplot2::geom_text(ggplot2::aes(x = 0, y = altitude_lines[5], label = altitude_lines[5]), hjust=0, vjust=0, size = 5, colour = "grey") +
 
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = 4920, yend = 4920), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = 0, y = 4920, label = "4920'"), hjust=0, vjust=0, size = 5, colour = "grey") +
+    ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = altitude_lines[6], yend = altitude_lines[6]), colour = "grey", linetype = "dashed", size = 0.1) +
+    ggplot2::geom_text(ggplot2::aes(x = 0, y = altitude_lines[6], label = altitude_lines[6]), hjust=0, vjust=0, size = 5, colour = "grey") +
 
     ggplot2::scale_colour_gradient2(
       low='green',
@@ -39,7 +45,7 @@ draw_wind_alt <- function(weather, location, wind_speed_red = 25){
     ggplot2::geom_path(data = interp_wind, ggplot2::aes(x = y, y = x, linewidth = y, colour = y), alpha = 1, lineend="round") +
 
     ggplot2::geom_text(label = "\u2193", size = 10, ggplot2::aes(angle = -winddirection), hjust = 0, colour = "black") +
-    ggplot2::geom_text(ggplot2::aes(label = windspeed), hjust=1.5, vjust=0, size = 5, colour = "#696969") +
+    ggplot2::geom_text(ggplot2::aes(label = round(windspeed)), hjust=1.5, vjust=0, size = 5, colour = "#696969") +
 
     #Takeoff Line
     ggplot2::geom_segment(data = weather, ggplot2::aes(x = 0, xend = max(windspeed)*1.1, y = location$elevation, yend = location$elevation), colour = "black", size = 1, linetype = "dashed") +
@@ -47,7 +53,8 @@ draw_wind_alt <- function(weather, location, wind_speed_red = 25){
 
     ggplot2::ggtitle(location$takeoff_name, unique(weather$time)) +
 
-    ggplot2::labs(x = "windspeed (kph)",
+    ggplot2::labs(x = glue::glue("windspeed ({speed_units})"),
+                  y = glue::glue("altitude ({altitude_units})"),
                   caption = "Data: NOAA GFS") +
 
     ggplot2::theme(axis.line=ggplot2::element_blank(),
@@ -57,7 +64,7 @@ draw_wind_alt <- function(weather, location, wind_speed_red = 25){
                    plot.caption=ggplot2::element_text(size = 8),
                    plot.title=ggplot2::element_text(size = 12),
                    axis.text.y=ggplot2::element_blank(),
-                   axis.title.y=ggplot2::element_blank(),
+                   axis.title.y=ggplot2::element_text(size = 12),
                    legend.position="none",
                    panel.background=ggplot2::element_blank(),
                    panel.border=ggplot2::element_blank(),
