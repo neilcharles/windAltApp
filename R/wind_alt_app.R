@@ -8,7 +8,7 @@ sites_alt <-
   readr::read_csv('https://raw.githubusercontent.com/neilcharles/uk_pg_sites/main/sites.csv') |>
   dplyr::filter(is.na(exclude))
 
-cache_location <- "inst/data/cache"
+cache_location <- "inst/data/cache/weather"
 
 thematic_shiny(font = "auto")
 
@@ -140,14 +140,14 @@ wind_alt_app <- function(...) {
       # Check if recent cached forecast exists
       cache_age <-
         file.info(glue::glue(
-          "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
+          "{cache_location}/{input$uiSitePicker}.rds"
         ))$mtime
 
       if (!is.na(cache_age)) {
         if (cache_age > lubridate::now() - lubridate::hours(1)) {
           return(readr::read_rds(
             glue::glue(
-              "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
+              "{cache_location}/{input$uiSitePicker}.rds"
             )
           ))
         }
@@ -173,7 +173,7 @@ wind_alt_app <- function(...) {
 
         weather |>
           readr::write_rds(glue::glue(
-            "{cache_location}/gfs_wind_alt/{input$uiSitePicker}.rds"
+            "{cache_location}/{input$uiSitePicker}.rds"
           ))
 
         weather
