@@ -1,8 +1,12 @@
 library(shiny)
+library(tidyverse)
 library(bslib)
 library(thematic)
 library(ragg)
 library(bsicons)
+library(shinycssloaders)
+library(gt)
+
 
 sites_alt <-
   readr::read_csv('https://raw.githubusercontent.com/neilcharles/uk_pg_sites/main/sites.csv') |>
@@ -17,17 +21,19 @@ wind_alt_app <- function(...) {
     page_fluid(
       tags$head(tags$style(
         HTML('p {font-family: "Nunito Sans"};')
-      )),
-
-      # shinyjs::useShinyjs(),
+      ),
+      includeHTML("html/googleanalytics.html")
+      ),
 
       theme = bs_theme(
         version = 5,
         fg = "rgb(99, 99, 105)",
+        #primary = "#636369",
+        #primary = "#83CDfB",
         primary = "#0568A6",
         secondary = "#D7D7D9",
         success = "#52BD6F",
-        info = "#83CDFB",
+        info = "#0568A6",
         warning = "#F2B705",
         danger = "#D92344",
         base_font = font_google("Nunito Sans"),
@@ -42,89 +48,85 @@ wind_alt_app <- function(...) {
 
       title = "Wind At Altitude",
 
-      titlePanel(title = ""),
+          navset_pill(
+          nav_panel(title = "Hourly Chart",
+                    card(
+                      card_header(
+                        layout_columns(
+                          widths = c(4,4,4),
 
-      layout_columns(
-        col_widths = c(8, 4),
-        card(
-          id = "forecast_wind_alt",
-          card(
-            card_header("Select Date and Time"),
-            uiOutput('date_picker'),
-            uiOutput('time_picker')
-          ),
-          card(
-            card_header("Wind Forecast"),
-            full_screen = TRUE,
-            plotOutput('wind_chart', width = "100%", height = 550)
-          )
-        ),
-        card(
-          card_header(
-            "Select Site",
-            popover(
-              bs_icon("gear"),
+                          dateInput(
+                            'uiDatePicker',
+                            'Date',
+                            min = lubridate::today(),
+                            max = lubridate::today() + lubridate::days(6),
+                            format = "yyyy-mm-dd DD"
+                          ),
+                        div(),
+                        sliderInput(
+                          'uiTimePicker',
+                          'Time',
+                          min = 0,
+                          max = 23,
+                          value = 12,
+                          step = 1,
+                          animate = FALSE
+                        ))
+                      ),
+
+                      withSpinner(plotOutput('wind_chart', width = "100%", height = 550))
+
+                    )),
+          nav_panel(title = "Week Overview",
+                      withSpinner(gt_output("wind_table"))
+                    ),
+          nav_spacer(),
+          nav_menu(
+            title = "Settings",
+            align = "right",
+            nav_panel(h6(icon("map-marker"), "Select Site"),
+
+                      card(
+                        card_header("Choose a site"),
+
+                      selectInput('uiSitePicker',
+                                  NULL,
+                                  c('', unique(
+                                    sites_alt$takeoff_name
+                                  )),
+                                  multiple = FALSE),
+                      p(
+                        "This app is new and currently in testing. Please do not use it as your only source of information."
+                      ),
+                      a("Email Me.", href = "mailto:neil.d.charles@gmail.com"),
+                      hr(),
+                      leaflet::leafletOutput('mini_map', width = "100%")
+
+)
+
+
+
+                      ),
+            nav_item(
+              card(
               radioButtons(
                 "uiAltitudeUnits",
                 "Altitudes",
                 c("feet", "metres"),
                 "feet"
               ),
-              radioButtons("uiSpeedUnits", "Speeds", c("kph", "mph"), "kph"),
-              title = "Settings"
-            )
-            ,
-            class = "d-flex justify-content-between"
-          ),
-          fill = FALSE,
-          layout_columns(
-            col_widths = c(6, 6),
-            uiOutput('site_picker'),
-            actionButton('uiGetWeather', 'Get Site Forecast')
-          ),
-          p(
-            "This app is new and currently in testing. Please do not use it as your only source of information."
-          ),
-          a("Email Me.", href = "mailto:neil.d.charles@gmail.com"),
-          hr(),
-          leaflet::leafletOutput('mini_map', width = "100%")
+                radioButtons("uiSpeedUnits", "Speeds", c("kph", "mph"), "kph"),
+              sliderInput("uiColourRed", "Red Colour Limit (kph)", min = 15, max = 40, value = 25)
+            ))
+
+          )
         )
       )
-    )
   }
 
   server <- function(input, output, session) {
-    # shinyjs::hide("forecast_wind_alt")
-
-    output$date_picker <- renderUI({
-      dateInput(
-        'uiDatePicker',
-        'Date',
-        min = lubridate::today(),
-        max = lubridate::today() + lubridate::days(6),
-        format = "yyyy-mm-dd DD"
-      )
-    })
-
     output$site_picker <- renderUI({
-      shinyWidgets::pickerInput(
-        'uiSitePicker',
-        NULL,
-        unique(sites_alt$takeoff_name),
-        multiple = FALSE,
-        options = list(container = "body", `live-search` = TRUE)
-      )
-    })
 
-    output$time_picker <- renderUI({
-      sliderInput(
-        'uiTimePicker',
-        'Time',
-        min = 0,
-        max = 23,
-        value = 12,
-        step = 1
-      )
     })
 
     location <- reactive({
@@ -133,22 +135,21 @@ wind_alt_app <- function(...) {
         dplyr::mutate(elevation = units_to_selected(elevation, "metres", input$uiAltitudeUnits))
     })
 
-    # shinyjs::show("forecast_wind_alt")
+    weather <- reactive({
+      validate(need(
+        !is.null(input$uiSitePicker) & nchar(input$uiSitePicker) > 0,
+        "Use the top-right settings button to select a site."
+      ),
+      )
 
-
-    weather <- eventReactive(input$uiGetWeather, {
       # Check if recent cached forecast exists
       cache_age <-
-        file.info(glue::glue(
-          "{cache_location}/{input$uiSitePicker}.rds"
-        ))$mtime
+        file.info(glue::glue("{cache_location}/{input$uiSitePicker}.rds"))$mtime
 
       if (!is.na(cache_age)) {
         if (cache_age > lubridate::now() - lubridate::hours(1)) {
           return(readr::read_rds(
-            glue::glue(
-              "{cache_location}/{input$uiSitePicker}.rds"
-            )
+            glue::glue("{cache_location}/{input$uiSitePicker}.rds")
           ))
         }
       }
@@ -172,9 +173,7 @@ wind_alt_app <- function(...) {
         weather <- list(wind = wind)
 
         weather |>
-          readr::write_rds(glue::glue(
-            "{cache_location}/{input$uiSitePicker}.rds"
-          ))
+          readr::write_rds(glue::glue("{cache_location}/{input$uiSitePicker}.rds"))
 
         weather
       })
@@ -182,7 +181,8 @@ wind_alt_app <- function(...) {
 
 
     output$wind_chart <- renderPlot({
-      req(weather())
+      req(weather(),
+          input$uiSitePicker)
 
       validate(need(
         unique(weather()$wind$takeoff_name) == unique(location()$takeoff_name),
@@ -209,7 +209,45 @@ wind_alt_app <- function(...) {
         draw_wind_alt(
           location = location(),
           altitude_units = input$uiAltitudeUnits,
-          speed_units = input$uiSpeedUnits
+          speed_units = input$uiSpeedUnits,
+          wind_speed_red_kph = input$uiColourRed
+        )
+    })
+
+    output$wind_table <- render_gt({
+
+      weather()$wind |>
+        filter(hour > 5 & hour < 21) |>
+        mutate(date = format(date, "%Y-%m-%d %A")) |>
+        left_join(pressure_altitudes()) |>
+        select(date, hour, windspeed, alt_m) |>
+        mutate(
+          hour = glue::glue("{hour}:00"),
+          altitude = round(units_to_selected(alt_m, "metres", input$uiAltitudeUnits)/10)*10,
+          windspeed = round(units_to_selected(windspeed, "kph", input$uiSpeedUnits))) |>
+          select(-alt_m) |>
+        pivot_wider(names_from = altitude, values_from = windspeed) |>
+        group_by(date) |>
+        gt(id = "windtable", rowname_col = "hour") |>
+        data_color(columns = everything(),
+                   palette = c("green", "red"),
+                   domain = c(0, units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
+                   na_color = "red") |>
+      tab_spanner(glue::glue("Windspeed ({input$uiSpeedUnits}) at Altitude ({input$uiAltitudeUnits})"), columns = everything()) |>
+        opt_css(
+          css = "
+    .cell-output-display {
+      overflow-x: unset !important;
+    }
+    div#windtable {
+      overflow-x: unset !important;
+      overflow-y: unset !important;
+    }
+    #windtable .gt_col_heading {
+      position: sticky !important;
+      top: 0 !important;
+       z-index: 1;
+    }"
         )
     })
 
