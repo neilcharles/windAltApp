@@ -74,7 +74,7 @@ wind_alt_app <- function(...) {
                         ))
                       ),
                       h6(
-                        "This app is new and currently in testing. Data comes from OpenMeteo and currently approximates the location of takeoff, it is essential that you also check an established weather forecast."
+                        "This app is new and still in active development. It may not be free from errors and it is essential that you also check an established weather forecast before flying."
                       ),
 
                       withSpinner(plotOutput('wind_chart', width = "100%", height = 550))
@@ -162,6 +162,7 @@ wind_alt_app <- function(...) {
         # Wind
         wind <- get_weather_at_altitude(lat, lon, "windspeed") |>
           dplyr::union_all(get_weather_at_altitude(lat, lon, "winddirection")) |>
+          dplyr::union_all(get_weather_at_altitude(lat, lon, "geopotential_height")) |>
           dplyr::select(-metric) |>
           tidyr::pivot_wider(names_from = fact, values_from = value) |>
           dplyr::mutate(
@@ -192,7 +193,7 @@ wind_alt_app <- function(...) {
       weather_wind <- weather()$wind |>
         dplyr::mutate(
           windspeed = units_to_selected(windspeed, "kph", input$uiSpeedUnits),
-          altitude = units_to_selected(alt_m, "metres", input$uiAltitudeUnits)
+          geopotential_height = units_to_selected(geopotential_height, "metres", input$uiAltitudeUnits)
         )
 
       #Convert time picker hour to the format used by open meteo
@@ -219,21 +220,18 @@ wind_alt_app <- function(...) {
       weather()$wind |>
         filter(hour > 5 & hour < 21) |>
         mutate(date = format(date, "%Y-%m-%d %A")) |>
-        left_join(pressure_altitudes()) |>
-        select(date, hour, windspeed, alt_m) |>
+        select(date, hour, windspeed, pressure_alt) |>
         mutate(
           hour = glue::glue("{hour}:00"),
-          altitude = round(units_to_selected(alt_m, "metres", input$uiAltitudeUnits)/10)*10,
           windspeed = round(units_to_selected(windspeed, "kph", input$uiSpeedUnits))) |>
-          select(-alt_m) |>
-        pivot_wider(names_from = altitude, values_from = windspeed) |>
+        pivot_wider(names_from = pressure_alt, values_from = windspeed) |>
         group_by(date) |>
         gt(id = "windtable", rowname_col = "hour") |>
         data_color(columns = everything(),
                    palette = c("green", "red"),
                    domain = c(0, units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
                    na_color = "red") |>
-      tab_spanner(glue::glue("Windspeed ({input$uiSpeedUnits}) at Altitude ({input$uiAltitudeUnits})"), columns = everything()) |>
+      tab_spanner(glue::glue("Windspeed ({input$uiSpeedUnits}) at Altitude"), columns = everything()) |>
         opt_css(
           css = "
     .cell-output-display {

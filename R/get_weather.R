@@ -1,11 +1,10 @@
 pressure_altitudes <- function(){
   tibble::tibble(
-    pressure_alt = c("1000hPa", "975hPa", "950hPa", "925hPa", "900hPa", "850hPa"),
-         alt_m = c(110, 320, 500, 800, 1000, 1500)
+    pressure_alt = c("1000hPa", "975hPa", "950hPa", "925hPa", "900hPa", "850hPa")
   )
 }
 
-open_meteo_data <- function(lat, lon, fact, forecast_service = "gfs", timezone = "Europe%2FLondon"){
+open_meteo_data <- function(lat, lon, fact, forecast_service = "dwd-icon", timezone = "Europe%2FLondon"){
 
   weather <- tibble::tibble(metric = as.character(fact)) |>
       dplyr::mutate(weather =

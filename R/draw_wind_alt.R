@@ -1,15 +1,19 @@
 draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_units, speed_units){
 
+  #Drop rows that have altitudes below ground level due to low pressure
+  weather <- weather |>
+    filter(!geopotential_height < 1)
+
   wind_speed_red <- units_to_selected(wind_speed_red_kph, "kph", speed_units)
 
-  interp_wind <- tibble::as_tibble(approx(weather$altitude, weather$windspeed, n=100))
+  interp_wind <- tibble::as_tibble(approx(weather$geopotential_height, weather$windspeed, n=100))
 
   altitude_lines <- units_to_selected(c(110, 320, 500, 800, 1000, 1500), "metres", altitude_units)
 
   altitude_lines = round(altitude_lines / 10) * 10
 
   chart <- weather |>
-    ggplot2::ggplot(ggplot2::aes(x = windspeed, y = altitude)) +
+    ggplot2::ggplot(ggplot2::aes(x = windspeed, y = geopotential_height)) +
 
     #Alt Lines
     ggplot2::geom_segment(data = weather, ggplot2::aes(x = -5, xend = max(windspeed)*1.1, y = altitude_lines[1], yend = altitude_lines[1]), colour = "grey", linetype = "dashed", size = 0.1) +
@@ -55,7 +59,7 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
 
     ggplot2::labs(x = glue::glue("windspeed ({speed_units})"),
                   y = glue::glue("altitude ({altitude_units})"),
-                  caption = "Data: NOAA GFS") +
+                  caption = "Data: DWD-ICON") +
 
     ggplot2::theme(axis.line=ggplot2::element_blank(),
                    axis.ticks=ggplot2::element_blank(),
