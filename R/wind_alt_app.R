@@ -73,6 +73,9 @@ wind_alt_app <- function(...) {
                           animate = FALSE
                         ))
                       ),
+                      h6(
+                        "This app is new and currently in testing. Data comes from OpenMeteo and currently approximates the location of takeoff, it is essential that you also check an established weather forecast."
+                      ),
 
                       withSpinner(plotOutput('wind_chart', width = "100%", height = 550))
 
@@ -95,9 +98,6 @@ wind_alt_app <- function(...) {
                                     sites_alt$takeoff_name
                                   )),
                                   multiple = FALSE),
-                      p(
-                        "This app is new and currently in testing. Please do not use it as your only source of information."
-                      ),
                       a("Email Me.", href = "mailto:neil.d.charles@gmail.com"),
                       hr(),
                       leaflet::leafletOutput('mini_map', width = "100%")
