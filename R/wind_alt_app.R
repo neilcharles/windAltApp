@@ -81,6 +81,8 @@ wind_alt_app <- function(...) {
 
                     )),
           nav_panel(title = "Week Overview",
+                    br(),
+                      h6("Windspeeds from approximately 300' to 5000'. Altitudes change as air pressure changes so use this table for a rough overview of the week and the hourly chart to get speeds at precise altitudes.", style="text-align:center"),
                       withSpinner(gt_output("wind_table"))
                     ),
           nav_spacer(),
