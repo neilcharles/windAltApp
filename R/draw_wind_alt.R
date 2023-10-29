@@ -8,31 +8,29 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
 
   interp_wind <- tibble::as_tibble(approx(weather$geopotential_height, weather$windspeed, n=100))
 
-  altitude_lines <- units_to_selected(c(110, 320, 500, 800, 1000, 1500), "metres", altitude_units)
+  # Draw a guideline for each alt (as a list for compactness)
+  draw_guidelines <- function(y, max_x){
+    y = round(y / 10) * 10
 
-  altitude_lines = round(altitude_lines / 10) * 10
+    list(
+      ggplot2::geom_segment(data = weather, ggplot2::aes(x = -5, xend = max_x*1.1, y = y, yend = y), colour = "grey", linetype = "dashed", size = 0.1),
+      ggplot2::geom_text(ggplot2::aes(x = -5, y = y, label = y), hjust=0, vjust=0, size = 6, colour = "grey")
+    )
+  }
 
+  max_x <- max(weather$windspeed)
+
+  guidelines <- weather |>
+    dplyr::group_by(geopotential_height) |>
+    dplyr::summarise() |>
+    pull(geopotential_height) |>
+    purrr::map2(.y = max_x, .f = ~draw_guidelines(.x, .y))
+
+
+  # Draw the chart
   chart <- weather |>
     ggplot2::ggplot(ggplot2::aes(x = windspeed, y = geopotential_height)) +
-
-    #Alt Lines
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = -5, xend = max(windspeed)*1.1, y = altitude_lines[1], yend = altitude_lines[1]), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = -5, y = altitude_lines[1], label = altitude_lines[1]), hjust=0, vjust=0, size = 5, colour = "grey") +
-
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = -5, xend = max(windspeed)*1.1, y = altitude_lines[2], yend = altitude_lines[2]), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = -5, y = altitude_lines[2], label = altitude_lines[2]), hjust=0, vjust=0, size = 5, colour = "grey") +
-
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = -5, xend = max(windspeed)*1.1, y = altitude_lines[3], yend = altitude_lines[3]), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = -5, y = altitude_lines[3], label = altitude_lines[3]), hjust=0, vjust=0, size = 5, colour = "grey") +
-
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = -5, xend = max(windspeed)*1.1, y = altitude_lines[4], yend = altitude_lines[4]), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = -5, y = altitude_lines[4], label = altitude_lines[4]), hjust=0, vjust=0, size = 5, colour = "grey") +
-
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = -5, xend = max(windspeed)*1.1, y = altitude_lines[5], yend = altitude_lines[5]), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = -5, y = altitude_lines[5], label = altitude_lines[5]), hjust=0, vjust=0, size = 5, colour = "grey") +
-
-    ggplot2::geom_segment(data = weather, ggplot2::aes(x = -5, xend = max(windspeed)*1.1, y = altitude_lines[6], yend = altitude_lines[6]), colour = "grey", linetype = "dashed", size = 0.1) +
-    ggplot2::geom_text(ggplot2::aes(x = -5, y = altitude_lines[6], label = altitude_lines[6]), hjust=0, vjust=0, size = 5, colour = "grey") +
+    guidelines +
 
     ggplot2::scale_colour_gradient2(
       low='green',
