@@ -56,7 +56,7 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
     ggplot2::ggtitle(location$takeoff_name, unique(weather$time)) +
 
     ggplot2::labs(x = glue::glue("windspeed ({speed_units})"),
-                  y = glue::glue("altitude ({altitude_units})"),
+                  y = glue::glue("altitude amsl ({altitude_units})"),
                   caption = "Data: DWD-ICON") +
 
     ggplot2::theme(axis.line=ggplot2::element_blank(),
