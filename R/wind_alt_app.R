@@ -72,6 +72,11 @@ wind_alt_app <- function(...) {
           )
         ),
 
+        h6(
+          "This app is new and still in active development. It may not be free from errors and it is essential that you also check an established weather forecast before flying."
+        ),
+
+
           conditionalPanel(
               condition = "input.nav==='Ground Level Multi Forecast' || input.nav==='Altitude Multi Forecast' || input.nav==='Hourly Detail'",
               card(
@@ -99,6 +104,14 @@ wind_alt_app <- function(...) {
 
       navset_pill(
         id = "nav",
+        nav_panel(title = "Hourly Detail",
+                  card(
+                    card_header("placeholder"),
+                    withSpinner(plotOutput(
+                      'wind_chart', width = "100%", height = 550
+                    ))
+
+                  )),
         nav_panel(title = "Ground Level Multi Forecast",
                   card(
                   card_header('Ground level wind estimated by DWD-ICON & GFS forecast models based on average terrain height'),
@@ -155,18 +168,6 @@ wind_alt_app <- function(...) {
                         windValueBoxUI("windGfsHigh")
                       )
                     )
-                  )),
-        nav_panel(title = "Hourly Detail",
-                  card(
-                    card_header("placeholder"),
-                    h6(
-                      "This app is new and still in active development. It may not be free from errors and it is essential that you also check an established weather forecast before flying."
-                    ),
-
-                    withSpinner(plotOutput(
-                      'wind_chart', width = "100%", height = 550
-                    ))
-
                   )),
         nav_panel(
           title = "Weekly Overview",
@@ -407,7 +408,8 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON"
+      "DWD-ICON",
+      width = session$clientData[['output_windDwdLow-wind_plot_width']]
     )
 
     windValueBoxServer(
@@ -422,7 +424,8 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "NOAA GFS"
+      "NOAA GFS",
+      width = session$clientData[['output_windGfsLow-wind_plot_width']]
     )
 
     # Mid level wind value boxes
@@ -438,7 +441,8 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON"
+      "DWD-ICON",
+      width = session$clientData[['output_windDwdMid-wind_plot_width']]
     )
 
     windValueBoxServer(
@@ -453,7 +457,8 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "NOAA GFS"
+      "NOAA GFS",
+      width = session$clientData[['output_windGfsMid-wind_plot_width']]
     )
 
     # High level wind value boxes
@@ -469,7 +474,8 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON"
+      "DWD-ICON",
+      width = session$clientData[['output_windDwdHigh-wind_plot_width']]
     )
 
     windValueBoxServer(
@@ -484,7 +490,8 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "NOAA GFS"
+      "NOAA GFS",
+      width = session$clientData[['output_windGfsHigh-wind_plot_width']]
     )
 
     # 10m wind value boxes
@@ -497,7 +504,9 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON"
+      "DWD-ICON",
+      width = session$clientData[['output_windDwd10m-wind_plot_width']],
+      override_altitude = TRUE
     )
 
     windValueBoxServer(
@@ -509,7 +518,9 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "NOAA GFS"
+      "NOAA GFS",
+      width = session$clientData[['output_windGfs10m-wind_plot_width']],
+      override_altitude = TRUE
     )
 
     # 10m gust value boxes
@@ -523,7 +534,9 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON"
+      "DWD-ICON",
+      width = session$clientData[['output_gustsDwd10m-wind_plot_width']],
+      override_altitude = TRUE
     )
 
     windValueBoxServer(
@@ -536,7 +549,9 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "NOAA GFS"
+      "NOAA GFS",
+      width = session$clientData[['output_gustsGfs10m-wind_plot_width']],
+      override_altitude = TRUE
     )
 
 

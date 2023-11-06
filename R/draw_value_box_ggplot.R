@@ -11,7 +11,7 @@ windValueBoxUI <- function(id){
   )
 }
 
-windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 25, altitude_units, speed_units, forecast_model){
+windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 25, altitude_units, speed_units, forecast_model, width = 300, override_altitude = FALSE){
   shiny::moduleServer(id, function(input, output, session){
 
     weather_formatted <- shiny::reactive({
@@ -43,7 +43,11 @@ windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 
     })
 
     output$forecast_altitude <- renderText({
-      glue::glue("{round(weather_selected_hour()$geopotential_height/10)*10} {altitude_units()}")
+      if(!override_altitude){
+        return(glue::glue("{round(weather_selected_hour()$geopotential_height/10)*10} {altitude_units()}"))
+      } else {
+        return("10m AGL")
+      }
     })
 
     output$forecast_windspeed_units <- renderText({
@@ -56,6 +60,13 @@ windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 
 
     output$wind_plot <- renderPlot({
 
+      text_scale = if(width > 300){
+        1
+      } else
+      {
+        width / 300
+      }
+
       plot <-
         ggplot2::ggplot(data = weather_formatted(), aes(x = hour, y = 1)) +
         ggplot2::scale_colour_gradient2(
@@ -66,8 +77,8 @@ windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 
           na.value = 'red',
           limits = c(0, wind_speed_red_kph())
         ) +
-        ggplot2::geom_text(label = "\u27A7", size = 10, ggplot2::aes(angle = -winddirection - 90, colour = windspeed, hjust = 0.5, vjust = 0.5), alpha = 0.6) +
-        ggplot2::geom_text(aes(label = round(windspeed), colour = windspeed), size = 5, hjust = 0.5, vjust = -1.5, alpha = 1) +
+        ggplot2::geom_text(label = "\u27A7", size = 10 * text_scale, ggplot2::aes(angle = -winddirection - 90, colour = windspeed, hjust = 0.5, vjust = 0.5), alpha = 0.6) +
+        ggplot2::geom_text(aes(label = round(windspeed), colour = windspeed), size = 5 * text_scale * 0.8, hjust = 0.5, vjust = -1.5, alpha = 1) +
         ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 2)) +
         ggplot2::scale_x_continuous(breaks = c(8, 12, 16, 20), labels = c('0800', '1200', '1600', '2000')) +
         ggplot2::theme_void() +
