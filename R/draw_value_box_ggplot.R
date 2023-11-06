@@ -66,8 +66,8 @@ windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 
           na.value = 'red',
           limits = c(0, wind_speed_red_kph())
         ) +
-        ggplot2::geom_text(label = "\u27A7", size = 20, ggplot2::aes(angle = -winddirection - 90, colour = windspeed, hjust = 0.5, vjust = 0.5), alpha = 0.6) +
-        ggplot2::geom_text(aes(label = round(windspeed)), size = 5, colour = "black", hjust = 0.5, vjust = -1.5, alpha = 1) +
+        ggplot2::geom_text(label = "\u27A7", size = 10, ggplot2::aes(angle = -winddirection - 90, colour = windspeed, hjust = 0.5, vjust = 0.5), alpha = 0.6) +
+        ggplot2::geom_text(aes(label = round(windspeed), colour = windspeed), size = 5, hjust = 0.5, vjust = -1.5, alpha = 1) +
         ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 2)) +
         ggplot2::scale_x_continuous(breaks = c(8, 12, 16, 20), labels = c('0800', '1200', '1600', '2000')) +
         ggplot2::theme_void() +

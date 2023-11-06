@@ -20,7 +20,8 @@ wind_alt_app <- function(...) {
   ui <- function(request) {
     page_fluid(
       tags$head(
-        tags$style(HTML('p {font-family: "Nunito Sans"};')),
+        tags$style(HTML('p {font-family: "Nunito Sans"}
+                        .bslib-value-box .value-box-title {font-size: 1.1rem; !important}')),
         includeHTML("html/googleanalytics.html")
       ),
 
@@ -99,21 +100,33 @@ wind_alt_app <- function(...) {
       navset_pill(
         id = "nav",
         nav_panel(title = "Ground Level Multi Forecast",
-                  card_header('placeholder'),
+                  card(
+                  card_header('Ground level wind estimated by DWD-ICON & GFS forecast models based on average terrain height'),
                   layout_column_wrap(
-                    width = "500px",
+                    width = "400px",
 
                   card(
                     card_header(
                       h3('Wind at 10m AGL'),
-                      p("Ground level wind estimated by the forecast model based on a terrain elevation model average")
+                      p("Base windspeed at ground level")
                     ),
                     windValueBoxUI("windDwd10m"),
                     windValueBoxUI("windGfs10m")
-                  ))),
+                  ),
+        card(
+          card_header(
+            h3('Gusts at 10m AGL'),
+            p("Wind gusts at ground level"),
+            windValueBoxUI("gustsDwd10m"),
+            windValueBoxUI("gustsGfs10m")
+
+          )
+          # windValueBoxUI("windDwd10m"),
+          # windValueBoxUI("windGfs10m")
+        )))),
         nav_panel(title = "Altitude Multi Forecast",
                   card(
-                    card_header('placeholder'),
+                    card_header('Wind at altitudes close to takeoff height estimated by DWD-ICON & GFS forecast models'),
                     layout_column_wrap(
                       width = "400px",
 
@@ -136,7 +149,7 @@ wind_alt_app <- function(...) {
                       card(
                         card_header(
                           h3('Wind at height'),
-                          p('Forecast two modelled pressure levels above takeoff altitude')
+                          p('Forecast at two modelled pressure levels above takeoff altitude')
                         ),
                         windValueBoxUI("windDwdHigh"),
                         windValueBoxUI("windGfsHigh")
@@ -499,6 +512,32 @@ wind_alt_app <- function(...) {
       "NOAA GFS"
     )
 
+    # 10m gust value boxes
+    windValueBoxServer(
+      "gustsDwd10m",
+      reactive(
+        weather_selected_date()$wind_ground_dwd |>
+          dplyr::mutate(windspeed = wind_gusts)
+      ),
+      reactive(input$uiTimePicker),
+      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
+      reactive(input$uiAltitudeUnits),
+      reactive(input$uiSpeedUnits),
+      "DWD-ICON"
+    )
+
+    windValueBoxServer(
+      "gustsGfs10m",
+      reactive(
+        weather_selected_date()$wind_ground_gfs |>
+          dplyr::mutate(windspeed = wind_gusts)
+      ),
+      reactive(input$uiTimePicker),
+      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
+      reactive(input$uiAltitudeUnits),
+      reactive(input$uiSpeedUnits),
+      "NOAA GFS"
+    )
 
 
 

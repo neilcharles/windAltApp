@@ -73,7 +73,7 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
                    panel.border=ggplot2::element_blank(),
                    panel.grid.major=ggplot2::element_blank(),
                    panel.grid.minor=ggplot2::element_blank(),
-                   plot.background=ggplot2::element_blank())
+                   plot.background=ggplot2::element_rect(fill = 'white', colour = 'white'))
 
   chart
 
