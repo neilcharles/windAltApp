@@ -54,7 +54,6 @@ wind_alt_app <- function(...) {
                         sites_alt$takeoff_name
                       )),
                       multiple = FALSE),
-          uiOutput('location_valuebox'),
           hr(),
           radioButtons(
             "uiAltitudeUnits",
@@ -77,11 +76,18 @@ wind_alt_app <- function(...) {
         ),
 
 
-          conditionalPanel(
-              condition = "input.nav==='Ground Level Multi Forecast' || input.nav==='Altitude Multi Forecast' || input.nav==='Hourly Detail'",
               card(
                 layout_columns(
-                widths = c(6, 6),
+                widths = c(8, 4),
+                uiOutput('location_valuebox'),
+                div(
+                  radioButtons(
+                    'uiForecastModel',
+                    'Forecast Model',
+                    choices = c('DWD ICON' = "DWD_ICON", 'NOAA GFS' = "NOAA_GFS"),
+                    selected = 'DWD_ICON'
+                  ),
+
                 dateInput(
               'uiDatePicker',
               'Date',
@@ -97,9 +103,8 @@ wind_alt_app <- function(...) {
               value = 12,
               step = 1,
               animate = FALSE
-            )
-
-          ))
+            ))
+          )
       ),
 
       navset_pill(
@@ -112,7 +117,7 @@ wind_alt_app <- function(...) {
                     ))
 
                   )),
-        nav_panel(title = "Ground Level Multi Forecast",
+        nav_panel(title = "Ground Level",
                   card(
                   card_header('Ground level wind estimated by DWD-ICON & GFS forecast models based on average terrain height'),
                   layout_column_wrap(
@@ -123,61 +128,55 @@ wind_alt_app <- function(...) {
                       h3('Wind at 10m AGL'),
                       p("Base windspeed at ground level")
                     ),
-                    windValueBoxUI("windDwd10m"),
-                    windValueBoxUI("windGfs10m")
+                    windValueBoxUI("wind10m")
                   ),
         card(
           card_header(
             h3('Gusts at 10m AGL'),
             p("Wind gusts at ground level"),
-            windValueBoxUI("gustsDwd10m"),
-            windValueBoxUI("gustsGfs10m")
+            windValueBoxUI("gusts10m")
 
           )
-          # windValueBoxUI("windDwd10m"),
-          # windValueBoxUI("windGfs10m")
         )))),
-        nav_panel(title = "Altitude Multi Forecast",
+        nav_panel(title = "Site Altitude",
                   card(
                     card_header('Wind at altitudes close to takeoff height estimated by DWD-ICON & GFS forecast models'),
                     layout_column_wrap(
                       width = "400px",
 
                       card(
+                        fill = FALSE,
                         card_header(
                           h3('Wind on the hill'),
                           p('Nearest available forecast at or below takeoff altitude')
                         ),
-                        windValueBoxUI("windDwdLow"),
-                        windValueBoxUI("windGfsLow")
+                        windValueBoxUI("windLow"),
                       ),
                       card(
                         card_header(
                           h3('Wind above the hill'),
                           p('Nearest available forecast above takeoff altitude')
                         ),
-                        windValueBoxUI("windDwdMid"),
-                        windValueBoxUI("windGfsMid")
+                        windValueBoxUI("windMid")
                       ),
                       card(
                         card_header(
                           h3('Wind at height'),
                           p('Forecast at two modelled pressure levels above takeoff altitude')
                         ),
-                        windValueBoxUI("windDwdHigh"),
-                        windValueBoxUI("windGfsHigh")
+                        windValueBoxUI("windHigh")
                       )
                     )
                   )),
-        nav_panel(
-          title = "Weekly Overview",
-          br(),
-          h6(
-            "Windspeeds from approximately 300' to 5000'. Altitudes change as air pressure changes so use this table for a rough overview of the week and the hourly chart to get speeds at precise altitudes.",
-            style = "text-align:center"
-          ),
-          withSpinner(gt_output("wind_table"))
-        )
+        # nav_panel(
+        #   title = "Weekly Overview",
+        #   br(),
+        #   h6(
+        #     "Windspeeds from approximately 300' to 5000'. Altitudes change as air pressure changes so use this table for a rough overview of the week and the hourly chart to get speeds at precise altitudes.",
+        #     style = "text-align:center"
+        #   ),
+        #   withSpinner(gt_output("wind_table"))
+        # )
       )
     ))
   }
@@ -279,10 +278,10 @@ wind_alt_app <- function(...) {
           tidyr::pivot_wider(names_from = fact, values_from = value) |>
           format_openmet()
 
-        weather <- list(wind_ground_dwd = wind_ground_dwd,
-                        wind_ground_gfs = wind_ground_gfs,
-                        wind_dwd = wind_dwd,
-                        wind_gfs = wind_gfs)
+        weather <- list(wind_ground_DWD_ICON = wind_ground_dwd,
+                        wind_ground_NOAA_GFS = wind_ground_gfs,
+                        wind_DWD_ICON = wind_dwd,
+                        wind_NOAA_GFS = wind_gfs)
 
         weather |>
           readr::write_rds(glue::glue("{cache_location}/{input$uiSitePicker}.rds"))
@@ -329,7 +328,8 @@ wind_alt_app <- function(...) {
         purrr::map(
           ~ .x |>
             left_join(get_site_altitudes(location(), .x), by = c("pressure_alt")) |>
-            select(pressure_alt, altitude_name)
+            select(pressure_alt, altitude_name) |>
+            tidyr::drop_na()
         )
 
       #Apply best fit pressure altitudes to the whole day
@@ -344,12 +344,16 @@ wind_alt_app <- function(...) {
 
 
     output$wind_chart <- renderPlot({
-      weather_selected_hour()[["wind_dwd"]] |>
+
+      req(weather_selected_hour())
+
+      weather_selected_hour()[[glue::glue("wind_{input$uiForecastModel}")]] |>
         draw_wind_alt(
           location = location(),
           altitude_units = input$uiAltitudeUnits,
           speed_units = input$uiSpeedUnits,
-          wind_speed_red_kph = input$uiColourRed
+          wind_speed_red_kph = input$uiColourRed,
+          attribution = input$uiForecastModel
         )
     })
 
@@ -397,10 +401,10 @@ wind_alt_app <- function(...) {
 
     # Low level wind value boxes
     windValueBoxServer(
-      "windDwdLow",
+      "windLow",
       reactive(
         filter(
-          weather_site_altitudes()$wind_dwd,
+          weather_site_altitudes()[[glue::glue("wind_{input$uiForecastModel}")]],
           altitude_name == "below takeoff"
         )
       ),
@@ -408,32 +412,16 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON",
-      width = session$clientData[['output_windDwdLow-wind_plot_width']]
-    )
-
-    windValueBoxServer(
-      "windGfsLow",
-      reactive(
-        filter(
-          weather_site_altitudes()$wind_gfs,
-          altitude_name == "below takeoff"
-        )
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      "NOAA GFS",
-      width = session$clientData[['output_windGfsLow-wind_plot_width']]
+      input$uiForecastModel,
+      width = session$clientData[['output_windLow-wind_plot_width']]
     )
 
     # Mid level wind value boxes
     windValueBoxServer(
-      "windDwdMid",
+      "windMid",
       reactive(
         filter(
-          weather_site_altitudes()$wind_dwd,
+          weather_site_altitudes()[[glue::glue("wind_{input$uiForecastModel}")]],
           altitude_name == "above takeoff"
         )
       ),
@@ -441,32 +429,16 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON",
-      width = session$clientData[['output_windDwdMid-wind_plot_width']]
-    )
-
-    windValueBoxServer(
-      "windGfsMid",
-      reactive(
-        filter(
-          weather_site_altitudes()$wind_gfs,
-          altitude_name == "above takeoff"
-        )
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      "NOAA GFS",
-      width = session$clientData[['output_windGfsMid-wind_plot_width']]
+      input$uiForecastModel,
+      width = session$clientData[['output_windMid-wind_plot_width']]
     )
 
     # High level wind value boxes
     windValueBoxServer(
-      "windDwdHigh",
+      "windHigh",
       reactive(
         filter(
-          weather_site_altitudes()$wind_dwd,
+          weather_site_altitudes()[[glue::glue("wind_{input$uiForecastModel}")]],
           altitude_name == "at height"
         )
       ),
@@ -474,86 +446,40 @@ wind_alt_app <- function(...) {
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON",
-      width = session$clientData[['output_windDwdHigh-wind_plot_width']]
-    )
-
-    windValueBoxServer(
-      "windGfsHigh",
-      reactive(
-        filter(
-          weather_site_altitudes()$wind_gfs,
-          altitude_name == "at height"
-        )
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      "NOAA GFS",
-      width = session$clientData[['output_windGfsHigh-wind_plot_width']]
+      input$uiForecastModel,
+      width = session$clientData[['output_windHigh-wind_plot_width']]
     )
 
     # 10m wind value boxes
     windValueBoxServer(
-      "windDwd10m",
+      "wind10m",
       reactive(
-        weather_selected_date()$wind_ground_dwd
+        weather_site_altitudes()[[glue::glue("wind_ground_{input$uiForecastModel}")]],
       ),
       reactive(input$uiTimePicker),
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON",
-      width = session$clientData[['output_windDwd10m-wind_plot_width']],
-      override_altitude = TRUE
-    )
-
-    windValueBoxServer(
-      "windGfs10m",
-      reactive(
-        weather_selected_date()$wind_ground_gfs
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      "NOAA GFS",
-      width = session$clientData[['output_windGfs10m-wind_plot_width']],
+      input$uiForecastModel,
+      width = session$clientData[['output_wind10m-wind_plot_width']],
       override_altitude = TRUE
     )
 
     # 10m gust value boxes
     windValueBoxServer(
-      "gustsDwd10m",
+      "gusts10m",
       reactive(
-        weather_selected_date()$wind_ground_dwd |>
+        weather_site_altitudes()[[glue::glue("wind_ground_{input$uiForecastModel}")]] |>
           dplyr::mutate(windspeed = wind_gusts)
       ),
       reactive(input$uiTimePicker),
       reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
       reactive(input$uiAltitudeUnits),
       reactive(input$uiSpeedUnits),
-      "DWD-ICON",
-      width = session$clientData[['output_gustsDwd10m-wind_plot_width']],
+      input$uiForecastModel,
+      width = session$clientData[['output_gusts10m-wind_plot_width']],
       override_altitude = TRUE
     )
-
-    windValueBoxServer(
-      "gustsGfs10m",
-      reactive(
-        weather_selected_date()$wind_ground_gfs |>
-          dplyr::mutate(windspeed = wind_gusts)
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      "NOAA GFS",
-      width = session$clientData[['output_gustsGfs10m-wind_plot_width']],
-      override_altitude = TRUE
-    )
-
 
 
     output$mini_map <- leaflet::renderLeaflet({

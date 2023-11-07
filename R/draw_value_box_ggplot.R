@@ -34,6 +34,7 @@ windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 
     })
 
     weather_selected_hour <- shiny::reactive({
+
       weather_formatted() |>
         dplyr::filter(hour==selected_hour())
     })
@@ -67,8 +68,13 @@ windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 
         width / 300
       }
 
+      plot_data <- weather_formatted() |>
+        dplyr::mutate(highlight = ifelse(hour==selected_hour(), 1, 0))
+
+      test <<- plot_data
+
       plot <-
-        ggplot2::ggplot(data = weather_formatted(), aes(x = hour, y = 1)) +
+        ggplot2::ggplot(data = plot_data, aes(x = hour, y = 1)) +
         ggplot2::scale_colour_gradient2(
           low='darkgreen',
           mid = 'darkgreen',
@@ -77,8 +83,10 @@ windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 
           na.value = 'red',
           limits = c(0, wind_speed_red_kph())
         ) +
-        ggplot2::geom_text(label = "\u27A7", size = 10 * text_scale, ggplot2::aes(angle = -winddirection - 90, colour = windspeed, hjust = 0.5, vjust = 0.5), alpha = 0.6) +
+        ggplot2::geom_text(label = "\u27A7", ggplot2::aes(size = highlight, angle = -winddirection - 90, hjust = 0.5, vjust = 0.5), colour = "black", alpha = 1) +
+        ggplot2::geom_text(label = "\u27A7", size = 10 * text_scale, ggplot2::aes(angle = -winddirection - 90, colour = windspeed, hjust = 0.5, vjust = 0.5), alpha = 1) +
         ggplot2::geom_text(aes(label = round(windspeed), colour = windspeed), size = 5 * text_scale * 0.8, hjust = 0.5, vjust = -1.5, alpha = 1) +
+        ggplot2::scale_size(range = c(10,15)) +
         ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 2)) +
         ggplot2::scale_x_continuous(breaks = c(8, 12, 16, 20), labels = c('0800', '1200', '1600', '2000')) +
         ggplot2::theme_void() +

@@ -1,4 +1,4 @@
-draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_units, speed_units){
+draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_units, speed_units, attribution){
 
   #Drop rows that have altitudes below ground level due to low pressure
   weather <- weather |>
@@ -57,7 +57,7 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
 
     ggplot2::labs(x = glue::glue("windspeed ({speed_units})"),
                   y = glue::glue("altitude amsl ({altitude_units})"),
-                  caption = "Data: DWD-ICON") +
+                  caption = attribution) +
 
     ggplot2::theme(axis.line=ggplot2::element_blank(),
                    axis.ticks=ggplot2::element_blank(),
