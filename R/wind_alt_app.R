@@ -338,6 +338,8 @@ wind_alt_app <- function(...) {
                     ~ .x |>
                       left_join(.y, by = "pressure_alt"))
 
+      weather_alt_test <<- date_takeoff_alt
+
       date_takeoff_alt
 
     })
