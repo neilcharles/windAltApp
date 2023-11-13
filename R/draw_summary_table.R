@@ -1,40 +1,3 @@
-library(gt)
-library(gtExtras)
-
-pal <- scales::gradient_n_pal(colours = c("darkgreen","darkgreen","red"),
-                                     values= c(0, 8, 25))
-
-write_rds(dwd, "temp.rds")
-
-table_data <- dwd |>
-  dplyr::filter(!is.na(altitude_name)) |>
-  dplyr::select(date, hour, windspeed, winddirection, altitude_name) |>
-  tidyr::pivot_wider(names_from = altitude_name,
-                     values_from = c(windspeed, winddirection)) |>
-  janitor::clean_names() |>
-  mutate(icon = "\u27A7",
-         hex_below_takeoff = pal(windspeed_below_takeoff)) |>
-  tidyr::replace_na(list(hex_below_takeoff = "#FF0000"))
-
-
-# table_data <- tibble::tibble(icon = c("\u27A7", "\u27A7", "\u27A7"), rotation = c(0, 90, 180))
-
-table_data |>
-  dplyr::select(date, hour, windspeed_below_takeoff, icon, hex_below_takeoff) |>
-  gt() |>
-  tab_style(cell_text(size = "xx-large"),
-            locations = cells_body(columns = c(4))) |>
-  tab_style(cell_text(color = from_column("hex_below_takeoff")),
-            locations = cells_body(columns = c(3,4))) |>
-  rotate_gt_column(table_data$winddirection_below_takeoff+90, 4) |>
-  gt::cols_hide("hex_below_takeoff") |>
-  gt::tab_spanner("On the Hill", c(3,4)) |>
-  gt::tab_spanner("Hour", c(2)) |>
-  cols_label(everything() ~"")
-  # tab_options(column_labels.hidden = TRUE)
-
-
-
 rotate_gt_column <-
   function(gt_table, rotation, target_column_index) {
     for (i in 1:length(rotation)) {
@@ -47,3 +10,104 @@ rotate_gt_column <-
 
     gt_table
   }
+
+
+draw_summary_table <- function(weather_overview){
+
+  pal <- scales::gradient_n_pal(colours = c("darkgreen","darkgreen","red"),
+                                values= c(0, 8, 25))
+
+  table_data <- weather_overview |>
+    dplyr::filter(!is.na(altitude_name)) |>
+    dplyr::mutate(across(contains("windspeed"), round)) |>
+    dplyr::select(date, hour, windspeed, winddirection, altitude_name) |>
+    tidyr::pivot_wider(names_from = altitude_name,
+                       values_from = c(windspeed, winddirection)) |>
+    janitor::clean_names() |>
+    mutate(icon_below_takeoff = "\u27A7",
+           icon_above_takeoff = "\u27A7",
+           icon_at_height = "\u27A7",
+           hex_below_takeoff = pal(windspeed_below_takeoff),
+           hex_above_takeoff = pal(windspeed_above_takeoff),
+           hex_at_height = pal(windspeed_at_height)) |>
+    tidyr::replace_na(list(hex_below_takeoff = "#FF0000",
+                           hex_above_takeoff = "#FF0000",
+                           hex_at_height = "#FF0000"))
+
+
+  table_data |>
+    dplyr::select(date, hour,
+                  windspeed_below_takeoff, icon_below_takeoff, hex_below_takeoff,
+                  windspeed_above_takeoff, icon_above_takeoff, hex_above_takeoff,
+                  windspeed_at_height, icon_at_height, hex_at_height) |>
+    dplyr::group_by(date) |>
+    mutate(date = format(date, "%Y-%m-%d %A")) |>
+    arrange(date, hour) |>
+    mutate(hour = glue::glue("{hour}:00")) |>
+    gt(id="two") |>
+    tab_style(cell_text(color = "white"), cells_body(columns = dplyr::contains("windspeed"))) |>
+    tab_style(cell_text(size = "xx-large"), locations = cells_body(columns = c(4,7,10))) |>
+    #Below TO
+    tab_style(cell_fill(color = from_column("hex_below_takeoff")),
+              locations = cells_body(columns = c("windspeed_below_takeoff"))) |>
+    tab_style(cell_text(color = from_column("hex_below_takeoff")),
+              locations = cells_body(columns = c("icon_below_takeoff"))) |>
+    rotate_gt_column(table_data$winddirection_below_takeoff+90, 4) |>
+    #Above TO
+    tab_style(cell_fill(color = from_column("hex_above_takeoff")),
+              locations = cells_body(columns = c("windspeed_above_takeoff"))) |>
+    tab_style(cell_text(color = from_column("hex_above_takeoff")),
+              locations = cells_body(columns = c("icon_above_takeoff"))) |>
+    rotate_gt_column(table_data$winddirection_above_takeoff+90, 7) |>
+    #At Height
+    tab_style(cell_fill(color = from_column("hex_at_height")),
+              locations = cells_body(columns = c("windspeed_at_height"))) |>
+    tab_style(cell_text(color = from_column("hex_at_height")),
+              locations = cells_body(columns = c("icon_at_height"))) |>
+    rotate_gt_column(table_data$winddirection_at_height+90, 10) |>
+    #Column titles
+    gt::tab_spanner("On the Hill", c(3,4)) |>
+    gt::tab_spanner("Above the Hill", c(6,7)) |>
+    gt::tab_spanner("At Height", c(9,10)) |>
+    #Format widths etc.
+    gt::cols_hide(dplyr::contains("hex")) |>
+    gt::cols_width(dplyr::contains("windspeed")~gt::px(85)) |>
+    gt::cols_width(dplyr::contains("icon")~gt::px(30)) |>
+    cols_label(everything() ~"") |>
+    tab_style(
+      style = cell_borders(
+        sides = c("left"),
+        weight = px(2)),
+      locations = cells_body(
+        columns = c(3,6,9)
+      )
+    ) |>
+    tab_style(
+      style = cell_borders(
+        sides = c("left"),
+        weight = px(2)),
+      locations = cells_body(
+        columns = c(3,6,9)
+      )
+    ) |>
+    cols_align(
+      align = "center",
+      columns = dplyr::everything()
+    ) |>
+    opt_css(
+      css = "
+    .cell-output-display {
+      overflow-x: unset !important;
+    }
+    div#two {
+      overflow-x: unset !important;
+      overflow-y: unset !important;
+    }
+    #two .gt_col_heading {
+      position: sticky !important;
+      top: 0 !important;
+    }
+    "
+    )
+
+}

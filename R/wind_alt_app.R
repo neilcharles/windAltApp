@@ -46,39 +46,20 @@ wind_alt_app <- function(...) {
 
       title = "Wind At Altitude",
 
-      layout_sidebar(
-        sidebar = sidebar(
+        layout_columns(
+          col_widths = c(2,10),
           selectInput('uiSitePicker',
                       "Select Site",
                       c('', unique(
                         sites_alt$takeoff_name
                       )),
-                      multiple = FALSE),
-          hr(),
-          radioButtons(
-            "uiAltitudeUnits",
-            "Altitudes",
-            c("feet", "metres"),
-            "feet"
-          ),
-          radioButtons("uiSpeedUnits", "Speeds", c("kph", "mph"), "kph"),
-          sliderInput(
-            "uiColourRed",
-            "Red Colour Limit (kph)",
-            min = 15,
-            max = 40,
-            value = 25
-          )
-        ),
-
-        h6(
-          "This app is new and still in active development. It may not be free from errors and it is essential that you also check an established weather forecast before flying."
+                      multiple = FALSE)
         ),
 
 
               card(
                 layout_columns(
-                widths = c(8, 4),
+                col_widths = c(8, 4),
                 uiOutput('location_valuebox'),
                 div(
                   radioButtons(
@@ -117,67 +98,33 @@ wind_alt_app <- function(...) {
                     ))
 
                   )),
-        nav_panel(title = "Ground Level",
-                  card(
-                  card_header('Ground level wind estimated by DWD-ICON & GFS forecast models based on average terrain height'),
-                  layout_column_wrap(
-                    width = "400px",
-
-                  card(
-                    card_header(
-                      h3('Wind at 10m AGL'),
-                      p("Base windspeed at ground level")
-                    ),
-                    windValueBoxUI("wind10m")
-                  ),
-        card(
-          card_header(
-            h3('Gusts at 10m AGL'),
-            p("Wind gusts at ground level"),
-            windValueBoxUI("gusts10m")
-
-          )
-        )))),
-        nav_panel(title = "Site Altitude",
-                  card(
-                    card_header('Wind at altitudes close to takeoff height estimated by DWD-ICON & GFS forecast models'),
-                    layout_column_wrap(
-                      width = "400px",
-
-                      card(
-                        fill = FALSE,
-                        card_header(
-                          h3('Wind on the hill'),
-                          p('Nearest available forecast at or below takeoff altitude')
-                        ),
-                        windValueBoxUI("windLow"),
-                      ),
-                      card(
-                        card_header(
-                          h3('Wind above the hill'),
-                          p('Nearest available forecast above takeoff altitude')
-                        ),
-                        windValueBoxUI("windMid")
-                      ),
-                      card(
-                        card_header(
-                          h3('Wind at height'),
-                          p('Forecast at two modelled pressure levels above takeoff altitude')
-                        ),
-                        windValueBoxUI("windHigh")
-                      )
-                    )
-                  )),
-        # nav_panel(
-        #   title = "Weekly Overview",
-        #   br(),
-        #   h6(
-        #     "Windspeeds from approximately 300' to 5000'. Altitudes change as air pressure changes so use this table for a rough overview of the week and the hourly chart to get speeds at precise altitudes.",
-        #     style = "text-align:center"
-        #   ),
-        #   withSpinner(gt_output("wind_table"))
-        # )
-      )
+        nav_panel(
+          title = "Weekly Overview",
+          br(),
+          h6("Forecast altitudes are calibrated to takeoff height. 'On the Hill' is the closest available forecast to takeoff height at an altitude below takeoff. 'Above the hill' is the first available forecast above takeoff height. 'At Height' is two forecast levels above takeoff."),
+          withSpinner(gt_output("summary_table"))
+        ),
+        nav_spacer(),
+        nav_menu(
+          title = "Settings",
+          align = "right",
+          nav_panel(
+          card(
+          radioButtons(
+            "uiAltitudeUnits",
+            "Altitudes",
+            c("feet", "metres"),
+            "feet"
+          ),
+          radioButtons("uiSpeedUnits", "Speeds", c("kph", "mph"), "kph"),
+          sliderInput(
+            "uiColourRed",
+            "Red Colour Limit (kph)",
+            min = 15,
+            max = 40,
+            value = 25
+          )))
+        )
     ))
   }
 
@@ -198,7 +145,9 @@ wind_alt_app <- function(...) {
         showcase_layout = showcase_left_center(max_height = "250px"),
         p(
           glue::glue('{location()$takeoff_lat},{location()$takeoff_lon}')
-        )
+        ),
+        br(),
+        p("This app is new and still in active development. It may not be free from errors and it is essential that you also check an established weather forecast before flying.")
       )
     })
 
@@ -290,9 +239,7 @@ wind_alt_app <- function(...) {
       })
     })
 
-    weather_selected_date <- reactive({
-      req(weather(),
-          input$uiSitePicker)
+    weather_selected_units <- reactive({
 
       weather_wind <- weather() |>
         purrr::map(
@@ -311,7 +258,15 @@ wind_alt_app <- function(...) {
                           hour <= 20)
         )
 
-      weather_wind |>
+      weather_wind
+
+    })
+
+    weather_selected_date <- reactive({
+      req(weather(),
+          input$uiSitePicker)
+
+      weather_selected_units() |>
         purrr::map(~ .x |>
                      dplyr::filter(date == input$uiDatePicker))
     })
@@ -323,24 +278,23 @@ wind_alt_app <- function(...) {
     })
 
     weather_site_altitudes <- reactive({
-      #Get the pressure altitudes around takeoff for selected hour
-      hour_takeoff_alt <- weather_selected_hour() |>
-        purrr::map(
-          ~ .x |>
-            left_join(get_site_altitudes(location(), .x), by = c("pressure_alt")) |>
-            select(pressure_alt, altitude_name) |>
-            tidyr::drop_na()
-        )
 
-      #Apply best fit pressure altitudes to the whole day
-      date_takeoff_alt <- weather_selected_date() |>
-        purrr::map2(.y = hour_takeoff_alt,
-                    ~ .x |>
-                      left_join(.y, by = "pressure_alt"))
+      weather_forecast_alt <- weather_selected_units()[[glue::glue("wind_{input$uiForecastModel}")]]
 
-      weather_alt_test <<- date_takeoff_alt
+      #Get altitudes for the pressure at midday for each day
+      hour_takeoff_alt <- weather_forecast_alt |>
+        dplyr::filter(hour==12) |>
+        tidyr::nest(data = -date) |>
+        dplyr::mutate(site_altitudes = purrr::map(.x = data, .f = ~get_site_altitudes(location(), .x))) |>
+        dplyr::select(-data) |>
+        tidyr::unnest(site_altitudes)
 
-      date_takeoff_alt
+      #Apply the midday altitudes to the entire forecast to allow drawing as a table
+      weather_overview <- weather_forecast_alt |>
+        dplyr::left_join(hour_takeoff_alt, by = c("pressure_alt", "date")) |>
+        dplyr::filter(!is.na(altitude_name))
+
+      weather_overview
 
     })
 
@@ -359,130 +313,9 @@ wind_alt_app <- function(...) {
         )
     })
 
-    output$wind_table <- render_gt({
-      weather()[["wind_dwd"]] |>
-        filter(hour > 5 & hour < 21) |>
-        mutate(date = format(date, "%Y-%m-%d %A")) |>
-        select(date, hour, windspeed, pressure_alt) |>
-        mutate(
-          hour = glue::glue("{hour}:00"),
-          windspeed = round(
-            units_to_selected(windspeed, "kph", input$uiSpeedUnits)
-          )
-        ) |>
-        pivot_wider(names_from = pressure_alt, values_from = windspeed) |>
-        group_by(date) |>
-        gt(id = "windtable", rowname_col = "hour") |>
-        data_color(
-          columns = everything(),
-          palette = c("green", "red"),
-          domain = c(
-            0,
-            units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)
-          ),
-          na_color = "red"
-        ) |>
-        tab_spanner(glue::glue("Windspeed ({input$uiSpeedUnits}) at Altitude"),
-                    columns = everything()) |>
-        opt_css(
-          css = "
-    .cell-output-display {
-      overflow-x: unset !important;
-    }
-    div#windtable {
-      overflow-x: unset !important;
-      overflow-y: unset !important;
-    }
-    #windtable .gt_col_heading {
-      position: sticky !important;
-      top: 0 !important;
-       z-index: 1;
-    }"
-        )
+    output$summary_table<- render_gt({
+      draw_summary_table(weather_site_altitudes())
     })
-
-    # Low level wind value boxes
-    windValueBoxServer(
-      "windLow",
-      reactive(
-        filter(
-          weather_site_altitudes()[[glue::glue("wind_{input$uiForecastModel}")]],
-          altitude_name == "below takeoff"
-        )
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      input$uiForecastModel,
-      width = session$clientData[['output_windLow-wind_plot_width']]
-    )
-
-    # Mid level wind value boxes
-    windValueBoxServer(
-      "windMid",
-      reactive(
-        filter(
-          weather_site_altitudes()[[glue::glue("wind_{input$uiForecastModel}")]],
-          altitude_name == "above takeoff"
-        )
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      input$uiForecastModel,
-      width = session$clientData[['output_windMid-wind_plot_width']]
-    )
-
-    # High level wind value boxes
-    windValueBoxServer(
-      "windHigh",
-      reactive(
-        filter(
-          weather_site_altitudes()[[glue::glue("wind_{input$uiForecastModel}")]],
-          altitude_name == "at height"
-        )
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      input$uiForecastModel,
-      width = session$clientData[['output_windHigh-wind_plot_width']]
-    )
-
-    # 10m wind value boxes
-    windValueBoxServer(
-      "wind10m",
-      reactive(
-        weather_site_altitudes()[[glue::glue("wind_ground_{input$uiForecastModel}")]],
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      input$uiForecastModel,
-      width = session$clientData[['output_wind10m-wind_plot_width']],
-      override_altitude = TRUE
-    )
-
-    # 10m gust value boxes
-    windValueBoxServer(
-      "gusts10m",
-      reactive(
-        weather_site_altitudes()[[glue::glue("wind_ground_{input$uiForecastModel}")]] |>
-          dplyr::mutate(windspeed = wind_gusts)
-      ),
-      reactive(input$uiTimePicker),
-      reactive(units_to_selected(input$uiColourRed, "kph", input$uiSpeedUnits)),
-      reactive(input$uiAltitudeUnits),
-      reactive(input$uiSpeedUnits),
-      input$uiForecastModel,
-      width = session$clientData[['output_gusts10m-wind_plot_width']],
-      override_altitude = TRUE
-    )
-
 
     output$mini_map <- leaflet::renderLeaflet({
       req(input$uiSitePicker)
