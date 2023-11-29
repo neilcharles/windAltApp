@@ -34,7 +34,6 @@ draw_summary_table <- function(weather_overview){
                            hex_above_takeoff = "#FF0000",
                            hex_at_height = "#FF0000"))
 
-
   table_data |>
     dplyr::select(date, hour,
                   windspeed_below_takeoff, icon_below_takeoff, hex_below_takeoff,
@@ -50,20 +49,20 @@ draw_summary_table <- function(weather_overview){
     #Below TO
     tab_style(cell_fill(color = from_column("hex_below_takeoff")),
               locations = cells_body(columns = c("windspeed_below_takeoff"))) |>
-    tab_style(cell_text(color = from_column("hex_below_takeoff")),
-              locations = cells_body(columns = c("icon_below_takeoff"))) |>
+    # tab_style(cell_text(color = from_column("hex_below_takeoff")),
+    #           locations = cells_body(columns = c("icon_below_takeoff"))) |>
     rotate_gt_column(table_data$winddirection_below_takeoff+90, 4) |>
     #Above TO
     tab_style(cell_fill(color = from_column("hex_above_takeoff")),
               locations = cells_body(columns = c("windspeed_above_takeoff"))) |>
-    tab_style(cell_text(color = from_column("hex_above_takeoff")),
-              locations = cells_body(columns = c("icon_above_takeoff"))) |>
+    # tab_style(cell_text(color = from_column("hex_above_takeoff")),
+    #           locations = cells_body(columns = c("icon_above_takeoff"))) |>
     rotate_gt_column(table_data$winddirection_above_takeoff+90, 7) |>
     #At Height
     tab_style(cell_fill(color = from_column("hex_at_height")),
               locations = cells_body(columns = c("windspeed_at_height"))) |>
-    tab_style(cell_text(color = from_column("hex_at_height")),
-              locations = cells_body(columns = c("icon_at_height"))) |>
+    # tab_style(cell_text(color = from_column("hex_at_height")),
+    #           locations = cells_body(columns = c("icon_at_height"))) |>
     rotate_gt_column(table_data$winddirection_at_height+90, 10) |>
     #Column titles
     gt::tab_spanner("On the Hill", c(3,4)) |>

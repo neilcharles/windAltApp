@@ -314,6 +314,7 @@ wind_alt_app <- function(...) {
     })
 
     output$summary_table<- render_gt({
+      test <<- weather_site_altitudes()
       draw_summary_table(weather_site_altitudes())
     })
 
