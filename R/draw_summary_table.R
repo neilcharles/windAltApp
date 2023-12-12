@@ -14,7 +14,7 @@ rotate_gt_column <-
 
 draw_summary_table <- function(weather_overview){
 
-  pal <- scales::gradient_n_pal(colours = c("darkgreen","darkgreen","red"),
+  pal <- scales::gradient_n_pal(colours = c("#11BD39", "#11BD39","#FF1830"),
                                 values= c(0, 8, 25))
 
   table_data <- weather_overview |>
@@ -30,9 +30,9 @@ draw_summary_table <- function(weather_overview){
            hex_below_takeoff = pal(windspeed_below_takeoff),
            hex_above_takeoff = pal(windspeed_above_takeoff),
            hex_at_height = pal(windspeed_at_height)) |>
-    tidyr::replace_na(list(hex_below_takeoff = "#FF0000",
-                           hex_above_takeoff = "#FF0000",
-                           hex_at_height = "#FF0000"))
+    tidyr::replace_na(list(hex_below_takeoff = "#FF1830",
+                           hex_above_takeoff = "#FF1830",
+                           hex_at_height = "#FF1830"))
 
   table_data |>
     dplyr::select(date, hour,
