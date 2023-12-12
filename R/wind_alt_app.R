@@ -101,8 +101,12 @@ wind_alt_app <- function(...) {
         nav_panel(
           title = "Weekly Overview",
           br(),
-          h6("Forecast altitudes are calibrated to takeoff height. 'On the Hill' is the closest available forecast to takeoff height at an altitude below takeoff. 'Above the hill' is the first available forecast above takeoff height. 'At Height' is two forecast levels above takeoff."),
-          withSpinner(gt_output("summary_table"))
+          layout_columns(
+            col_widths = c(4,4,4),
+          withSpinner(gt_output("summary_table1")),
+          withSpinner(gt_output("summary_table2")),
+          withSpinner(gt_output("summary_table3")))
+
         ),
         nav_spacer(),
         nav_menu(
@@ -313,9 +317,19 @@ wind_alt_app <- function(...) {
         )
     })
 
-    output$summary_table<- render_gt({
+    output$summary_table1<- render_gt({
       draw_summary_table(weather_site_altitudes() |>
-                           dplyr::filter(date <= min(weather_site_altitudes()$date)+2))
+                           dplyr::filter(date == min(weather_site_altitudes()$date)))
+    })
+
+    output$summary_table2<- render_gt({
+      draw_summary_table(weather_site_altitudes() |>
+                           dplyr::filter(date == min(weather_site_altitudes()$date)+1))
+    })
+
+    output$summary_table3<- render_gt({
+      draw_summary_table(weather_site_altitudes() |>
+                           dplyr::filter(date == min(weather_site_altitudes()$date)+2))
     })
 
     output$mini_map <- leaflet::renderLeaflet({

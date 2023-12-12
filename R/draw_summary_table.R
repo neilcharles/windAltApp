@@ -12,6 +12,18 @@ rotate_gt_column <-
   }
 
 
+make_column_label <- function(weather_overview, altitude_selected){
+  altitude_label <- weather_overview |>
+    dplyr::group_by(altitude_name, altitude) |>
+    dplyr::summarise() |>
+    dplyr::mutate(altitude = round(altitude)) |>
+    dplyr::mutate(altitude_label = glue::glue("{altitude_name} ({altitude})")) |>
+    dplyr::filter(altitude_name==altitude_selected) |>
+    pull(altitude_label)
+
+  altitude_label
+}
+
 draw_summary_table <- function(weather_overview){
 
   pal <- scales::gradient_n_pal(colours = c("#11BD39", "#11BD39","#FF1830"),
@@ -65,9 +77,9 @@ draw_summary_table <- function(weather_overview){
     #           locations = cells_body(columns = c("icon_at_height"))) |>
     rotate_gt_column(table_data$winddirection_at_height+90, 10) |>
     #Column titles
-    gt::tab_spanner("On the Hill", c(3,4)) |>
-    gt::tab_spanner("Above the Hill", c(6,7)) |>
-    gt::tab_spanner("At Height", c(9,10)) |>
+    gt::tab_spanner(make_column_label(weather_overview, "below takeoff"), c(3,4)) |>
+    gt::tab_spanner(make_column_label(weather_overview, "above takeoff"), c(6,7)) |>
+    gt::tab_spanner(make_column_label(weather_overview, "at height"), c(9,10)) |>
     #Format widths etc.
     gt::cols_hide(dplyr::contains("hex")) |>
     gt::cols_width(dplyr::contains("windspeed")~gt::px(85)) |>
