@@ -51,8 +51,8 @@ draw_summary_table <- function(weather_overview){
                   windspeed_below_takeoff, icon_below_takeoff, hex_below_takeoff,
                   windspeed_above_takeoff, icon_above_takeoff, hex_above_takeoff,
                   windspeed_at_height, icon_at_height, hex_at_height) |>
-    dplyr::group_by(date) |>
-    mutate(date = format(date, "%Y-%m-%d %A")) |>
+    # dplyr::group_by(date) |>
+    # mutate(date = format(date, "%Y-%m-%d %A")) |>
     arrange(date, hour) |>
     mutate(hour = glue::glue("{hour}:00")) |>
     gt(id="two") |>
@@ -85,6 +85,7 @@ draw_summary_table <- function(weather_overview){
     gt::cols_width(dplyr::contains("windspeed")~gt::px(85)) |>
     gt::cols_width(dplyr::contains("icon")~gt::px(30)) |>
     cols_label(everything() ~"") |>
+    tab_header(format(min(weather_overview$date), "%Y-%m-%d %A")) |>
     tab_style(
       style = cell_borders(
         sides = c("left"),
