@@ -9,6 +9,11 @@ get_site_altitudes <- function(location, weather){
   below_takeoff <- which(available_differences==max(available_differences[available_differences < 0]))
   above_takeoff <- which(available_differences==min(available_differences[available_differences > 0]))
 
+  # If site is very low and there is no below takeoff forecast, get the first available one
+  # Happens when 1000hPa is above takeoff height
+  # Swapping in ground level forecast would be better?
+  if(length(below_takeoff)==0) below_takeoff <- 1
+
   return(tibble::tibble(
     altitude_name = c('below takeoff', 'above takeoff', 'at height'),
     pressure_alt = c(weather$pressure_alt[below_takeoff],
