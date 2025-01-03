@@ -71,15 +71,13 @@ windValueBoxServer <- function(id, weather, selected_hour, wind_speed_red_kph = 
       plot_data <- weather_formatted() |>
         dplyr::mutate(highlight = ifelse(hour==selected_hour(), 1, 0))
 
-      test <<- plot_data
-
       plot <-
         ggplot2::ggplot(data = plot_data, aes(x = hour, y = 1)) +
-        ggplot2::scale_colour_gradient2(
-          low='darkgreen',
-          mid = 'darkgreen',
-          high = 'red',
-          midpoint = wind_speed_red_kph()/3,
+        ggplot2::scale_colour_gradientn(
+          colours = c('lightblue', 'lightblue', 'green', 'green', 'red'),
+          # mid = 'green',
+          # high = 'red',
+          # midpoint = wind_speed_red_kph()/3,
           na.value = 'red',
           limits = c(0, wind_speed_red_kph())
         ) +

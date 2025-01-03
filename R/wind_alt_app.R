@@ -92,14 +92,14 @@ wind_alt_app <- function(...) {
         id = "nav",
         nav_panel(title = "Hourly Detail",
                   card(
-                    card_header("placeholder"),
+                    card_header("Forecast"),
                     withSpinner(plotOutput(
                       'wind_chart', width = "100%", height = 550
                     ))
 
                   )),
         nav_panel(
-          title = "Weekly Overview",
+          title = "3 Day View",
           br(),
           layout_columns(
             col_widths = c(4,4,4),
@@ -107,6 +107,19 @@ wind_alt_app <- function(...) {
           withSpinner(gt_output("summary_table2")),
           withSpinner(gt_output("summary_table3")))
 
+        ),
+        nav_panel(
+          title = "About",
+          br(),
+          h3("Who built this app?"),
+          p("Neil Charles, an average weekend warrior PG pilot who likes building techy stuff. I mostly fly in the Pennines, or more accurately, I mostly look after my kids, muck about building apps and occasionally fly in the Pennines. You can contact me ", shiny::a(href = "https://linktr.ee/neilcharles", "here.")),
+          h3("How does the app work?"),
+          p("I built the Wind at Altitude app to make it easy to see wind speed and direction at the altitudes where paragliders mostly fly. The app uses DWD ICON and NOAA GFS data from Open Meteo and caches data for one hour. If the app's cache is older than an hour then it requests a new forecast from Open Meteo (which may be unchanged because ICON and GFS don't refresh as frequently as hourly)."),
+          p("The Wind at Altitude app is designed primarily to avoid pilots being surprised by unexpectedly strong winds and wind direction changes above take-off altitude."),
+          h3("Can I switch to mph?"),
+          p("Yes. Look for the settings button on the right hand side and you can change a few settings there, including measurement units and calibrating the colour scale on the chart."),
+          h3("Can I make the app remember my settings?"),
+          p("When you change settings they're stored in the page URL. If you set it up the way you like it and then create a bookmark, next time you visit the bookmark, the site will be set to your choice of units and your favourite hill etc.")
         ),
         nav_spacer(),
         nav_menu(
@@ -128,8 +141,12 @@ wind_alt_app <- function(...) {
             max = 40,
             value = 25
           )))
-        )
-    ))
+        ),
+        footer = "This app is maintained by a single developer as a hobby. Please do not rely on it as your only source of safety-critical information."
+    ),
+    hr()
+
+    )
   }
 
   server <- function(input, output, session) {
@@ -146,12 +163,10 @@ wind_alt_app <- function(...) {
         ),
         value = location()$takeoff_name,
         showcase = leaflet::leafletOutput('mini_map'),
-        showcase_layout = showcase_left_center(max_height = "250px"),
+        showcase_layout = showcase_bottom(max_height = "250px"),
         p(
           glue::glue('{location()$takeoff_lat},{location()$takeoff_lon}')
-        ),
-        br(),
-        p("This app is new and still in active development. It may not be free from errors and it is essential that you also check an established weather forecast before flying.")
+        )
       )
     })
 
@@ -164,12 +179,12 @@ wind_alt_app <- function(...) {
 
       # Check if recent cached forecast exists
       cache_age <-
-        file.info(glue::glue("{cache_location}/{input$uiSitePicker}.rds"))$mtime
+        file.info(glue::glue("{cache_location}/{janitor::make_clean_names(input$uiSitePicker)}.rds"))$mtime
 
       if (!is.na(cache_age)) {
         if (cache_age > lubridate::now() - lubridate::hours(1)) {
           return(readr::read_rds(
-            glue::glue("{cache_location}/{input$uiSitePicker}.rds")
+            glue::glue("{cache_location}/{janitor::make_clean_names(input$uiSitePicker)}.rds")
           ))
         }
       }
@@ -237,7 +252,7 @@ wind_alt_app <- function(...) {
                         wind_NOAA_GFS = wind_gfs)
 
         weather |>
-          readr::write_rds(glue::glue("{cache_location}/{input$uiSitePicker}.rds"))
+          readr::write_rds(glue::glue("{cache_location}/{janitor::make_clean_names(input$uiSitePicker)}.rds"))
 
         weather
       })

@@ -32,11 +32,9 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
     ggplot2::ggplot(ggplot2::aes(x = windspeed, y = geopotential_height)) +
     guidelines +
 
-    ggplot2::scale_colour_gradient2(
-      low='green',
-      mid = 'green',
-      high = 'red',
-      midpoint = 8,
+    ggplot2::scale_colour_gradientn(
+      colours = c('lightblue', 'lightblue', 'green', 'red'),
+      values = c(0, 0.25, 0.7, 1),
       na.value = 'red',
       limits = c(0, wind_speed_red)
     ) +
