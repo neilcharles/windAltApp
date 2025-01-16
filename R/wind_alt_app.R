@@ -56,10 +56,11 @@ wind_alt_app <- function(...) {
                       multiple = FALSE)
         ),
 
-
+        layout_column_wrap(
+          heights_equal = c("row"),
               card(
                 layout_columns(
-                col_widths = c(8, 4),
+                col_widths = c(12),
                 uiOutput('location_valuebox'),
                 div(
                   radioButtons(
@@ -141,9 +142,9 @@ wind_alt_app <- function(...) {
             max = 40,
             value = 25
           )))
-        ),
-        footer = "This app is maintained by a single developer as a hobby. Please do not rely on it as your only source of safety-critical information."
+        ))
     ),
+    p("This app is maintained by a single developer as a hobby. Please do not rely on it as your only source of safety-critical information."),
     hr()
 
     )
