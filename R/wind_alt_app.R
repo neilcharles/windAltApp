@@ -66,7 +66,7 @@ wind_alt_app <- function(...) {
                   radioButtons(
                     'uiForecastModel',
                     'Forecast Model',
-                    choices = c('DWD ICON' = "DWD_ICON", 'NOAA GFS' = "NOAA_GFS"),
+                    choices = c('DWD ICON' = "DWD_ICON", "Met Office" = "MET_OFFICE", 'NOAA GFS' = "NOAA_GFS"),
                     selected = 'DWD_ICON'
                   ),
 
@@ -135,6 +135,7 @@ wind_alt_app <- function(...) {
             "feet"
           ),
           radioButtons("uiSpeedUnits", "Speeds", c("kph", "mph"), "kph"),
+          input_switch("uiShowHighAlt", "Show High Altitude", FALSE),
           sliderInput(
             "uiColourRed",
             "Red Colour Limit (kph)",
@@ -205,17 +206,17 @@ wind_alt_app <- function(...) {
         lat <- location()$takeoff_lat
         lon <- location()$takeoff_lon
 
-        setProgress(message = 'Getting DWD-ICON ground level', value = 0.1)
+        setProgress(message = 'Getting DWD-ICON ground level', value = 0.05)
 
         # Wind ground - DWD
         wind_ground_dwd <-
-          get_weather_at_10m(lat, lon, "windspeed_10m", "dwd-icon") |>
-          dplyr::union_all(get_weather_at_10m(lat, lon, "winddirection_10m", "dwd-icon")) |>
-          dplyr::union_all(get_weather_at_10m(lat, lon, "wind_gusts_10m", "dwd-icon")) |>
+          get_weather_at_10m(lat, lon, "windspeed_10m", "icon") |>
+          dplyr::union_all(get_weather_at_10m(lat, lon, "winddirection_10m", "icon")) |>
+          dplyr::union_all(get_weather_at_10m(lat, lon, "wind_gusts_10m", "icon")) |>
           tidyr::pivot_wider(names_from = metric, values_from = value) |>
           format_openmet()
 
-        setProgress(message = 'Getting NOAA GFS ground level', value = 0.2)
+        setProgress(message = 'Getting NOAA GFS ground level', value = 0.1)
 
         # Wind ground - GFS
         wind_ground_gfs <-
@@ -225,18 +226,28 @@ wind_alt_app <- function(...) {
           tidyr::pivot_wider(names_from = metric, values_from = value) |>
           format_openmet()
 
-        setProgress(message = 'Getting DWD-ICON at altitude', value = 0.3)
+        setProgress(message = 'Getting Met Office ground level', value = 0.15)
+
+        # Wind ground - Met Office
+        wind_ground_mo <-
+          get_weather_at_10m(lat, lon, "windspeed_10m", "ukmo") |>
+          dplyr::union_all(get_weather_at_10m(lat, lon, "winddirection_10m", "ukmo")) |>
+          dplyr::union_all(get_weather_at_10m(lat, lon, "wind_gusts_10m", "ukmo")) |>
+          tidyr::pivot_wider(names_from = metric, values_from = value) |>
+          format_openmet()
+
+        setProgress(message = 'Getting DWD-ICON at altitude', value = 0.2)
 
         # Wind at alt - DWD
         wind_dwd <-
-          get_weather_at_altitude(lat, lon, "windspeed", "dwd-icon") |>
-          dplyr::union_all(get_weather_at_altitude(lat, lon, "winddirection", "dwd-icon")) |>
-          dplyr::union_all(get_weather_at_altitude(lat, lon, "geopotential_height", "dwd-icon")) |>
+          get_weather_at_altitude(lat, lon, "windspeed", "icon") |>
+          dplyr::union_all(get_weather_at_altitude(lat, lon, "winddirection", "icon")) |>
+          dplyr::union_all(get_weather_at_altitude(lat, lon, "geopotential_height", "icon")) |>
           dplyr::select(-metric) |>
           tidyr::pivot_wider(names_from = fact, values_from = value) |>
           format_openmet()
 
-        setProgress(message = 'Getting NOAA GFS at altitude', value = 0.6)
+        setProgress(message = 'Getting NOAA GFS at altitude', value = 0.4)
 
         # Wind at alt - GFS
         wind_gfs <-
@@ -247,16 +258,37 @@ wind_alt_app <- function(...) {
           tidyr::pivot_wider(names_from = fact, values_from = value) |>
           format_openmet()
 
+        setProgress(message = 'Getting Met Office at altitude', value = 0.6)
+
+        # Wind at alt - Met Office
+        wind_mo <-
+          get_weather_at_altitude(lat, lon, "windspeed", "ukmo") |>
+          dplyr::union_all(get_weather_at_altitude(lat, lon, "winddirection", "ukmo")) |>
+          dplyr::union_all(get_weather_at_altitude(lat, lon, "geopotential_height", "ukmo")) |>
+          dplyr::select(-metric) |>
+          tidyr::pivot_wider(names_from = fact, values_from = value) |>
+          format_openmet()
+
         weather <- list(wind_ground_DWD_ICON = wind_ground_dwd,
                         wind_ground_NOAA_GFS = wind_ground_gfs,
+                        wind_ground_MET_OFFICE = wind_ground_mo,
                         wind_DWD_ICON = wind_dwd,
-                        wind_NOAA_GFS = wind_gfs)
+                        wind_NOAA_GFS = wind_gfs,
+                        wind_MET_OFFICE = wind_mo)
 
         weather |>
           readr::write_rds(glue::glue("{cache_location}/{janitor::make_clean_names(input$uiSitePicker)}.rds"))
 
         weather
       })
+    })
+
+    altitude_limit <- reactive({
+      if(!input$uiShowHighAlt){
+        return(units_to_selected(1500, "metres", input$uiAltitudeUnits))
+      } else {
+        return(units_to_selected(100000, "metres", input$uiAltitudeUnits))
+      }
     })
 
     weather_selected_units <- reactive({
@@ -275,7 +307,10 @@ wind_alt_app <- function(...) {
               )
             ) |>
             dplyr::filter(hour >= 8,
-                          hour <= 20)
+                          hour <= 20) |>
+            dplyr::filter(
+              geopotential_height <= altitude_limit()
+            )
         )
 
       weather_wind

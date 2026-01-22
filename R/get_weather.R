@@ -1,17 +1,18 @@
 pressure_altitudes <- function(){
   tibble::tibble(
-    pressure_alt = c("1000hPa", "975hPa", "950hPa", "925hPa", "900hPa", "850hPa")
+    pressure_alt = c("1000hPa", "975hPa", "950hPa", "925hPa", "900hPa", "850hPa", "700hPa", "600hPa")
   )
 }
 
-open_meteo_data <- function(lat, lon, fact, forecast_service = "dwd-icon", timezone = "Europe%2FLondon"){
+open_meteo_data <- function(lat, lon, fact, forecast_service = "icon", timezone = "Europe%2FLondon"){
 
   weather <- tibble::tibble(metric = as.character(fact)) |>
       dplyr::mutate(weather =
                       purrr::map(
                         .x = metric,
                         .f = ~jsonlite::read_json(
-                          glue::glue("https://api.open-meteo.com/v1/{forecast_service}?latitude={lat}&longitude={lon}&hourly={.x}&timezone={timezone}&elevation=nan")  #&past_days=5")
+                          # glue::glue("https://api.open-meteo.com/v1/{forecast_service}?latitude={lat}&longitude={lon}&hourly={.x}&timezone={timezone}&elevation=nan")  #&past_days=5")  # OLD pre _seamless
+                          glue::glue("https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly={.x}&timezone={timezone}&models={forecast_service}_seamless&elevation=nan")
         )
       )) |>
     dplyr::mutate(
@@ -33,7 +34,7 @@ open_meteo_data <- function(lat, lon, fact, forecast_service = "dwd-icon", timez
 }
 
 
-get_weather_at_altitude <- function(lat = NULL, lon = NULL, fact, forecast_service = "dwd-icon"){
+get_weather_at_altitude <- function(lat = NULL, lon = NULL, fact, forecast_service = "icon"){
 
   pressure_altitudes() |>
     dplyr::mutate(fact = fact) |>
@@ -47,7 +48,7 @@ get_weather_at_altitude <- function(lat = NULL, lon = NULL, fact, forecast_servi
 
 }
 
-get_weather_at_10m <- function(lat = NULL, lon = NULL, fact, forecast_service = "dwd-icon"){
+get_weather_at_10m <- function(lat = NULL, lon = NULL, fact, forecast_service = "icon"){
 
     open_meteo_data(lat, lon, fact, forecast_service) |>
       mutate(geopotential_height = elevation + 10,
