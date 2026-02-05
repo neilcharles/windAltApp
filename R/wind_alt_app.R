@@ -158,10 +158,12 @@ wind_alt_app <- function(...) {
               p("Click on an hour to jump to altitude detail"),
               div(
                 style = "display: flex; justify-content: center;",
+                div(
+                  style = "max-width: 400px; width: 100%; overflow-x: auto;",
                 withSpinner(
-                  DT::dataTableOutput("weather_summary_table", width = 400),
+                  DT::dataTableOutput("weather_summary_table", width = "100%"),
                   type = 5, color = "#D7D7D9", size = 1
-                )
+                ))
               )
             ),
             nav_panel(title = "Hourly Detail",
