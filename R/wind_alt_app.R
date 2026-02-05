@@ -257,8 +257,9 @@ wind_alt_app <- function(...) {
         <li>Much faster loading</li>
         <li>Met Office Forecasts</li>
         <li>Week ahead ground level summary</li>
+        <li>Click on the summary forecast to jump straight to an altitude chart</li>
         <li>Cloud cover and temperature at altitude</li>
-        <li>Option in 'settings' to see higher altitudes</li>
+        <li>Option to see higher altitudes</li>
         </ul>"),
       hr()
       ),
@@ -558,7 +559,15 @@ wind_alt_app <- function(...) {
         'mini_map_center',
         'mini_map_bounds',
         'uiGetWeather',
-        'uiSitePicker_open'
+        'uiSitePicker_open',
+        "weather_summary_table_rows_selected",
+        "weather_summary_table_columns_selected",
+        "weather_summary_table_cells_selected",
+        "weather_summary_table_rows_current",
+        "weather_summary_table_search",
+        "weather_summary_table_cell_clicked",
+        "weather_summary_table_rows_all",
+        "weather_summary_table_state"
       )
     )
 
