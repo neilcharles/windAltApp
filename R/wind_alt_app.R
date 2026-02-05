@@ -6,6 +6,7 @@ library(ragg)
 library(bsicons)
 library(waiter)
 library(gt)
+library(shinycssloaders)
 
 addResourcePath('www', 'www/')
 
@@ -157,7 +158,10 @@ wind_alt_app <- function(...) {
               p("Click on an hour to jump to altitude detail"),
               div(
                 style = "display: flex; justify-content: center;",
-                DT::dataTableOutput("weather_summary_table", width = 400)
+                withSpinner(
+                  DT::dataTableOutput("weather_summary_table", width = 400),
+                  type = 5, color = "#D7D7D9", size = 1
+                )
               )
             ),
             nav_panel(title = "Hourly Detail",
@@ -184,8 +188,10 @@ wind_alt_app <- function(...) {
                       input_switch("uiShowHighAlt", "Show High Altitude", FALSE),
                       hr(),
 
-                      plotOutput(
-                        'wind_chart', width = "100%", height = 550
+                      withSpinner(
+                        plotOutput(
+                          'wind_chart', width = "100%", height = 550
+                        ), type = 5, color = "#D7D7D9", size = 1
                       )
 
                       ),
@@ -473,8 +479,6 @@ wind_alt_app <- function(...) {
     output$wind_chart <- renderPlot({
       req(weather_selected_hour())
 
-      waiter_calculating_html()
-
       cht <- weather_selected_hour()[[glue::glue("wind_{input$uiForecastModel}")]] |>
         draw_wind_alt(
           location = location(),
@@ -483,8 +487,6 @@ wind_alt_app <- function(...) {
           wind_speed_red_kph = input$uiColourRed,
           attribution = input$uiForecastModel
         )
-
-      waiter_hide()
 
       cht
     })
@@ -504,14 +506,10 @@ wind_alt_app <- function(...) {
     output$weather_summary_table <- DT::renderDT({
       req(weather_selected_units())
 
-      waiter_calculating_html()
-
       tbl <- weather_summary_table(weather_selected_units()[[glue::glue("wind_ground_{input$uiForecastModel}")]],
                             speed_units = input$uiSpeedUnits,
                             wind_speed_red_kph = input$uiColourRed
                             )
-
-      waiter_hide()
 
       tbl
     })
