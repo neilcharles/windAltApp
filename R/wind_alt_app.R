@@ -27,7 +27,9 @@ wind_alt_app <- function(...) {
         color = "#FFFFFF",
         fadeout = 2000
       ),
-      tags$head(tags$style(
+      tags$head(
+        tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "www/favicon.png"),
+        tags$style(
       HTML(
         '
                 .container, .container-fluid {
