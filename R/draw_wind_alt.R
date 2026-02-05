@@ -4,6 +4,8 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
   weather <- weather |>
     filter(!geopotential_height < 1)
 
+  max_x <- max(weather$elevation)
+
   wind_speed_red <- units_to_selected(wind_speed_red_kph, "kph", speed_units)
 
   interp_wind <- tibble::as_tibble(approx(weather$geopotential_height, weather$windspeed, n=100))
@@ -24,9 +26,6 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
     }
   }
 
-  max_x <- max(weather$windspeed)
-
-  # For main chart, with text
   guidelines <- weather |>
     dplyr::group_by(geopotential_height) |>
     dplyr::summarise() |>
@@ -40,10 +39,11 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
     pull(geopotential_height) |>
     purrr::map2(.y = max_x, .f = ~draw_guidelines(.x, .y, with_annotations = FALSE))
 
-  guidelines_temp <<- guidelines
-  weather_temp <<- weather
-  wind_speed_red_temp <<- wind_speed_red
-  interp_wind_temp <<- interp_wind
+  # Save for debug
+  # guidelines_temp <<- guidelines
+  # weather_temp <<- weather
+  # wind_speed_red_temp <<- wind_speed_red
+  # interp_wind_temp <<- interp_wind
 
 
   # Base background

@@ -113,46 +113,43 @@ wind_alt_app <- function(...) {
 
           navset_pill(
             id = "nav",
+            nav_panel(
+              title = "Summary",
+              br(),
+              div(
+                style = "display: flex; justify-content: center;",
+                DT::dataTableOutput("weather_summary_table", width = 400)
+              )
+            ),
             nav_panel(title = "Hourly Detail",
                       hr(),
-              layout_columns(
-                col_widths = c(4,1,7),
-                dateInput(
-                  'uiDatePicker',
-                  'Date',
-                  min = lubridate::today(),
-                  max = lubridate::today() + lubridate::days(6),
-                  format = "yyyy-mm-dd DD"
-                ),
-                div(),
-                sliderInput(
-                  'uiTimePicker',
-                  'Time',
-                  min = 8,
-                  max = 20,
-                  value = 12,
-                  step = 1,
-                  animate = FALSE
-                )
-                ),
-              hr(),
+                      layout_columns(
+                        col_widths = c(4,1,7),
+                        dateInput(
+                          'uiDatePicker',
+                          'Date',
+                          min = lubridate::today(),
+                          max = lubridate::today() + lubridate::days(6),
+                          format = "yyyy-mm-dd DD"
+                        ),
+                        div(),
+                        sliderInput(
+                          'uiTimePicker',
+                          'Time',
+                          min = 8,
+                          max = 20,
+                          value = 12,
+                          step = 1,
+                          animate = FALSE
+                        )
+                      ),
+                      hr(),
 
-              withSpinner(plotOutput(
-                'wind_chart', width = "100%", height = 550
-              )
+                      withSpinner(plotOutput(
+                        'wind_chart', width = "100%", height = 550
+                      )
 
-            )),
-            nav_panel(
-              title = "3 Day View",
-              br(),
-              layout_columns(
-                col_widths = c(4, 4, 4),
-                withSpinner(gt_output("summary_table1")),
-                withSpinner(gt_output("summary_table2")),
-                withSpinner(gt_output("summary_table3"))
-              )
-
-            ),
+                      )),
             nav_panel(
               title = "About",
               br(),
@@ -373,6 +370,8 @@ wind_alt_app <- function(...) {
             )
           )
 
+        weather_cache <<- weather
+
         weather
       })
     })
@@ -485,6 +484,33 @@ wind_alt_app <- function(...) {
         leaflet::addMarkers(lng = ~ takeoff_lon, lat = ~ takeoff_lat)
 
     })
+
+    # Summary table ------------------------------------------------------------
+    output$weather_summary_table <- DT::renderDT({
+      weather_summary_table(weather_selected_units()[[glue::glue("wind_ground_{input$uiForecastModel}")]],
+                            speed_units = input$uiSpeedUnits)
+    })
+
+    # Callback to switch to altitude chart -------------------------------------
+    observeEvent(input$weather_summary_table_rows_selected, {
+
+      req(input$weather_summary_table_rows_selected)
+
+      # Get the selected row index
+      selected_row <- input$weather_summary_table_rows_selected
+
+      # Get the corresponding data from your weather data
+      selected_data <- weather_selected_units()[[glue::glue("wind_ground_{input$uiForecastModel}")]][selected_row, ]
+
+      # Update the date and time pickers
+      updateDateInput(session, "uiDatePicker", value = selected_data$date)
+      updateSliderInput(session, "uiTimePicker", value = selected_data$hour)
+
+      # Switch to the Hourly Detail tab
+      nav_select(id = "nav", selected = "Hourly Detail", session = session)
+    })
+
+
 
     #Stop on close
     # session$onSessionEnded(function() {
