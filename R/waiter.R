@@ -1,5 +1,5 @@
 waiter_loading_screen_html <- htmltools::tagList(
-  shiny::img(src = "www/flyable-logo.png", width = "500px"),
+  shiny::img(src = "www/flyable-logo.png", width = "300px"),
   shiny::h3("Weather at Altitude", style="color:#2b4364")
 )
 
