@@ -29,7 +29,7 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
     if(with_annotations){
       list(
         ggplot2::geom_hline(yintercept = y, colour = "grey", linetype = "dashed", size = 0.2),
-        ggplot2::annotate("text", x = -5, y = y, label = y, size = 6, colour = "grey", vjust = -0.5)
+        ggplot2::annotate("text", x = -3, y = y, label = y, size = 6, colour = "grey", vjust = -1)
       )
     } else {
       list(

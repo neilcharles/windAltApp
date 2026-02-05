@@ -155,7 +155,7 @@ wind_alt_app <- function(...) {
             id = "nav",
             nav_panel(
               title = "Summary",
-              p("Click on an hour to jump to altitude detail"),
+              strong("Click on an hour to jump to the altitude detail chart"),
               div(
                 style = "display: flex; justify-content: center;",
                 div(
