@@ -4,7 +4,7 @@ library(bslib)
 library(thematic)
 library(ragg)
 library(bsicons)
-library(shinycssloaders)
+library(waiter)
 library(gt)
 
 addResourcePath('www', 'www/')
@@ -21,6 +21,12 @@ wind_alt_app <- function(...) {
 
   ui <- function(request) {
     page_fixed(
+      useWaiter(),
+      waiter_preloader(
+        html = waiter_loading_screen_html,
+        color = "#FFFFFF",
+        fadeout = 2000
+      ),
       tags$head(tags$style(
       HTML(
         '
@@ -31,9 +37,14 @@ wind_alt_app <- function(...) {
 
         p {
             font-family: "Nunito Sans";
-            }
+        }
+
          .bslib-value-box .value-box-title {
             font-size: 1.1rem; !important;
+         }
+
+        table.dataTable tr.selected td, table.dataTable tr.selected {
+        box-shadow: inset 0 0 0 9999px #2b4364 !important;
         }
      .top-bar {
         background-color: #ffffff;
@@ -61,10 +72,10 @@ wind_alt_app <- function(...) {
       theme = bs_theme(
         version = 5,
         fg = "rgb(99, 99, 105)",
-        primary = "#0568A6",
+        primary = "#2b4364",
         secondary = "#D7D7D9",
         success = "#52BD6F",
-        info = "#0568A6",
+        info = "#2b4364",
         warning = "#F2B705",
         danger = "#D92344",
         base_font = font_google("Nunito Sans"),
@@ -77,7 +88,7 @@ wind_alt_app <- function(...) {
 
       # Allow dropdown to overflow card
 
-      title = "Wind At Altitude",
+      title = "flyable.uk",
 
     br(),
 
@@ -108,21 +119,46 @@ wind_alt_app <- function(...) {
             uiOutput('location_valuebox')
           )
         ),
+        br(),
+          shinyWidgets::radioGroupButtons(
+            'uiForecastModel',
+            NULL,
+            choices = c(
+              '
+              <div style="font-weight:bold;">DWD ICON</div>
+              <div style="font-size:0.75em;">Modern German model</div>
+              ' =
+              "DWD_ICON",
+              '
+              <div style="font-weight:bold;">MET Office</div>
+              <div style="font-size:0.75em;">Modern British model</div>
+              ' =
+              "MET_OFFICE",
+              '
+              <div style="font-weight:bold;">NOAA GFS</div>
+              <div style="font-size:0.75em;">Older US model (like XCWeather)</div>
+              ' =
+              "NOAA_GFS"
+            ),
+            selected = 'DWD_ICON',
+            justified = TRUE,  # Spreads buttons to full width
+            width = "100%"
+          ),
+
 
         br(),
 
-          navset_pill(
+          navset_card_pill(
             id = "nav",
             nav_panel(
               title = "Summary",
-              br(),
+              p("Click on an hour to jump to altitude detail"),
               div(
                 style = "display: flex; justify-content: center;",
                 DT::dataTableOutput("weather_summary_table", width = 400)
               )
             ),
             nav_panel(title = "Hourly Detail",
-                      hr(),
                       layout_columns(
                         col_widths = c(4,1,7),
                         dateInput(
@@ -143,13 +179,14 @@ wind_alt_app <- function(...) {
                           animate = FALSE
                         )
                       ),
+                      input_switch("uiShowHighAlt", "Show High Altitude", FALSE),
                       hr(),
 
-                      withSpinner(plotOutput(
+                      plotOutput(
                         'wind_chart', width = "100%", height = 550
                       )
 
-                      )),
+                      ),
             nav_panel(
               title = "About",
               br(),
@@ -183,24 +220,12 @@ wind_alt_app <- function(...) {
             nav_menu(title = "Settings", align = "right", nav_item(
               card(
                 radioButtons(
-                  'uiForecastModel',
-                  'Forecast Model',
-                  choices = c(
-                    'DWD ICON' = "DWD_ICON",
-                    "Met Office" = "MET_OFFICE",
-                    'NOAA GFS' = "NOAA_GFS"
-                  ),
-                  inline = TRUE,
-                  selected = 'DWD_ICON'
-                ),
-                radioButtons(
                   "uiAltitudeUnits",
                   "Altitudes",
                   c("feet", "metres"),
                   "feet"
                 ),
                 radioButtons("uiSpeedUnits", "Speeds", c("kph", "mph"), "kph"),
-                input_switch("uiShowHighAlt", "Show High Altitude", FALSE),
                 sliderInput(
                   "uiColourRed",
                   "Red Colour Limit (kph)",
@@ -221,6 +246,7 @@ wind_alt_app <- function(...) {
         <li>We've moved to flyable.uk</li>
         <li>Much faster loading</li>
         <li>Met Office Forecasts</li>
+        <li>Week ahead ground level summary</li>
         <li>Cloud cover and temperature at altitude</li>
         <li>Option in 'settings' to see higher altitudes</li>
         </ul>"),
@@ -370,8 +396,6 @@ wind_alt_app <- function(...) {
             )
           )
 
-        weather_cache <<- weather
-
         weather
       })
     })
@@ -447,7 +471,9 @@ wind_alt_app <- function(...) {
     output$wind_chart <- renderPlot({
       req(weather_selected_hour())
 
-      weather_selected_hour()[[glue::glue("wind_{input$uiForecastModel}")]] |>
+      waiter_calculating_html()
+
+      cht <- weather_selected_hour()[[glue::glue("wind_{input$uiForecastModel}")]] |>
         draw_wind_alt(
           location = location(),
           altitude_units = input$uiAltitudeUnits,
@@ -455,23 +481,10 @@ wind_alt_app <- function(...) {
           wind_speed_red_kph = input$uiColourRed,
           attribution = input$uiForecastModel
         )
-    })
 
-    output$summary_table1 <- render_gt({
-      draw_summary_table(weather_site_altitudes() |>
-                           dplyr::filter(date == min(weather_site_altitudes()$date)))
-    })
+      waiter_hide()
 
-    output$summary_table2 <- render_gt({
-      draw_summary_table(weather_site_altitudes() |>
-                           dplyr::filter(date == min(weather_site_altitudes()$date) +
-                                           1))
-    })
-
-    output$summary_table3 <- render_gt({
-      draw_summary_table(weather_site_altitudes() |>
-                           dplyr::filter(date == min(weather_site_altitudes()$date) +
-                                           2))
+      cht
     })
 
     output$mini_map <- leaflet::renderLeaflet({
@@ -487,8 +500,18 @@ wind_alt_app <- function(...) {
 
     # Summary table ------------------------------------------------------------
     output$weather_summary_table <- DT::renderDT({
-      weather_summary_table(weather_selected_units()[[glue::glue("wind_ground_{input$uiForecastModel}")]],
-                            speed_units = input$uiSpeedUnits)
+      req(weather_selected_units())
+
+      waiter_calculating_html()
+
+      tbl <- weather_summary_table(weather_selected_units()[[glue::glue("wind_ground_{input$uiForecastModel}")]],
+                            speed_units = input$uiSpeedUnits,
+                            wind_speed_red_kph = input$uiColourRed
+                            )
+
+      waiter_hide()
+
+      tbl
     })
 
     # Callback to switch to altitude chart -------------------------------------

@@ -2,7 +2,19 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
 
   #Drop rows that have altitudes below ground level due to low pressure
   weather <- weather |>
-    filter(!geopotential_height < 1)
+    filter(!geopotential_height < 1) |>
+    rowwise() |>
+    mutate(
+      cloud_image = {
+        img <- magick::image_read("cloud-solid2.png")
+        img <- magick::image_fx(img, expression = paste0(cloud_cover/100, "*a"), channel = "alpha")
+        # Save to temp file with unique name
+        temp_file <- tempfile(fileext = ".png")
+        magick::image_write(img, temp_file)
+        temp_file
+      }
+    ) |>
+    ungroup()
 
   max_x <- max(weather$elevation)
 
@@ -52,7 +64,7 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
     #Takeoff Line
     ggplot2::geom_hline(yintercept = location$elevation, colour = "black", size = 1, linetype = "dashed") +
 
-    ggplot2::scale_y_continuous(limits = c(0, max(weather_temp$geopotential_height*1.1))) +
+    ggplot2::scale_y_continuous(limits = c(0, max(weather$geopotential_height*1.1))) +
 
     ggplot2::ggtitle(location$takeoff_name, unique(weather$time)) +
 
@@ -92,11 +104,12 @@ draw_wind_alt <- function(weather, location, wind_speed_red_kph = 25, altitude_u
                    panel.grid.minor=ggplot2::element_blank(),
                    plot.background=ggplot2::element_rect(fill = 'white', colour = 'white'))
 
+
   # RIght side cloud chart
   clouds_chart <- chart_base +
     guidelines_simple +
     #Clouds
-    ggimage::geom_image(image = "cloud-solid2.png", aes(x = -3, alpha = cloud_cover), size = 0.08, hjust = 0, colour = "#696969") + #clouds
+    ggimage::geom_image(aes(x = -3, image = cloud_image), size = 0.08, hjust = 0) +
     ggplot2::scale_alpha_continuous(range = c(0,1), limits = c(0,100)) +
     # ggplot2::geom_text(label = "\u2601", aes(x = -3), size = 15, hjust = 0.5, colour = "#696969", alpha = 0.6, vjust = -0.1) + #clouds
     ggplot2::geom_text(aes(label = glue::glue("{cloud_cover}%"), x = -3), size = 4, hjust = 0.3, colour = "#FFFFFF", alpha = 1, vjust = -1) +
