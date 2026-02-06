@@ -386,8 +386,8 @@ wind_alt_app <- function(...) {
 
         # Weather Code - Met Office
         weather_code_mo <-
-          get_weather_basic(lat, lon, "weather_code", "ukmo") |>
-          dplyr::union_all(get_weather_basic(lat, lon, "temperature_2m", "ukmo")) |>
+          get_weather_basic_new(lat, lon, fact = "weather_code", forecast_service = "ukmo") |>
+          dplyr::union_all(get_weather_basic_new(lat, lon, "temperature_2m", "ukmo")) |>
           tidyr::pivot_wider(names_from = metric, values_from = value) |>
           format_openmet()
 
@@ -420,6 +420,7 @@ wind_alt_app <- function(...) {
     })
 
     weather_selected_units <- reactive({
+
       weather_wind <- weather() |>
         purrr::map(
           ~ .x |>

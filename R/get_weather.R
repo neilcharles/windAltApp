@@ -42,7 +42,11 @@ open_meteo_data_new <- function(lat, lon, request, forecast_service = "icon", ti
   )
 
   weather <- result$hourly |>
-    purrr::map_df(~unlist(.x)) |>
+    purrr::map_df(~{
+      x <- .x
+      x[sapply(x, is.null)] <- NA  # Replace NULLs with NA
+      unlist(x)
+    }) |>
     tidyr::pivot_longer(-time, names_to = "metric") |>
     dplyr::mutate(elevation = result$elevation)
 

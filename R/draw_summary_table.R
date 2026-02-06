@@ -23,6 +23,9 @@ get_wind_colour <- function(speed, max_speed = wind_speed_red) {
 
 weather_summary_table <- function(weather, speed_units, wind_speed_red_kph){
 
+  weather <- weather |>
+    filter(!is.na(windspeed)) #sometimes the API returns empty values and they crash this function
+
   wind_speed_red <- units_to_selected(wind_speed_red_kph, "kph", speed_units)
 
   weather <- weather |>
